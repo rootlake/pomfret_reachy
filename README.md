@@ -1,10 +1,17 @@
-# Pomfret Reachy Mini ("Peachy")
+<p align="center">
+  <img src="peachyLogo.png" alt="Peachy logo" width="280">
+</p>
 
-Python tools and a phone-friendly dashboard for controlling a **Reachy Mini** robot in the classroom — wake/sleep, expressions, room sensing, conversation handoff, and a path to **build your own apps**.
+<h1 align="center">Pomfret Reachy Mini ("Peachy")</h1>
 
-Built for Pomfret School students. Works on any Reachy Mini on the same Wi‑Fi as your laptop.
+<p align="center">
+Python tools and a phone-friendly dashboard for controlling a <strong>Reachy Mini</strong> robot in the classroom — wake/sleep, expressions, room sensing, conversation handoff, and a path to <strong>build your own apps</strong>.
+</p>
 
-**Repository:** [github.com/rootlake/pomfret_reachy](https://github.com/rootlake/pomfret_reachy)
+<p align="center">
+Built for Pomfret School students · Works on any Reachy Mini on the same Wi‑Fi as your laptop<br>
+<strong>Repository:</strong> <a href="https://github.com/rootlake/pomfret_reachy">github.com/rootlake/pomfret_reachy</a>
+</p>
 
 ---
 
