@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+
+[project]
+name = "boo_hide"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "reachy-mini",
+    "speechrecognition>=3.10.0",
+]
+keywords = ["reachy-mini-app"]
+
+[project.entry-points."reachy_mini_apps"]
+boo_hide = "boo_hide.main:BooHide"
+
+[tool.setuptools]
+package-dir = { "" = "." }
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["."]
+
+[tool.setuptools.package-data]
+boo_hide = ["**/*"] # Also include all non-.py files

@@ -1,0 +1,1394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#FF8A5B">
+<title>Peachy Control</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=DM+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --cream:#FFF1E0; --ink:#34203F; --peach:#FF8A5B; --coral:#FF5C8A;
+    --mint:#28D9A0; --amber:#FFC247; --stop:#FF4D4D; --sky:#5BC8FF;
+    --grape:#9B6BFF; --shadow:#34203F;
+    --disp:"Baloo 2",ui-rounded,"Trebuchet MS",system-ui,sans-serif;
+    --mono:"DM Mono",ui-monospace,"Courier New",monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
+  body{
+    font-family:var(--disp); color:var(--ink); background:var(--cream);
+    background-image:
+      radial-gradient(circle at 1px 1px, rgba(52,32,63,.07) 1px, transparent 0);
+    background-size:22px 22px;
+    min-height:100dvh; padding:18px 16px calc(120px + env(safe-area-inset-bottom));
+    overflow-x:hidden;
+  }
+  /* grain */
+  body::after{content:"";position:fixed;inset:0;pointer-events:none;opacity:.5;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='.8'/%3E%3C/filter%3E%3Crect width='80' height='80' filter='url(%23n)' opacity='.05'/%3E%3C/svg%3E");}
+
+  .wrap{max-width:480px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+  .title{display:flex;align-items:baseline;gap:10px;justify-content:center;
+    margin-top:4px;animation:drop .5s both}
+  .title h1{font-weight:800;font-size:30px;letter-spacing:-.5px}
+  .title .tag{font-family:var(--mono);font-size:11px;color:var(--peach);
+    border:2px solid var(--ink);border-radius:999px;padding:2px 8px;
+    transform:rotate(3deg);background:#fff}
+
+  /* ---- STATUS DECK (tight rail + big logo) ---- */
+  .deck{position:relative;background:#fff;border:2px solid var(--ink);
+    border-radius:14px;box-shadow:3px 3px 0 var(--shadow);
+    padding:8px 6px 6px;display:flex;flex-direction:column;align-items:center;
+    gap:5px;animation:drop .5s .05s both;width:fit-content;max-width:100%;
+    align-self:center;height:fit-content}
+  .brand-mark{display:flex;flex-direction:column;align-items:center;gap:2px;width:100%}
+  .glyph{display:flex;align-items:center;justify-content:center;line-height:0}
+  .brand-name{font-family:"Courier New",Courier,monospace;font-size:15px;font-weight:700;
+    color:var(--ink);letter-spacing:.02em;margin:0;line-height:1}
+  .brand-sub{font-family:"Courier New",Courier,monospace;font-size:6px;font-weight:700;
+    letter-spacing:.1em;text-transform:uppercase;color:#8a7791;margin:0;
+    line-height:1.25;text-align:center;max-width:118px}
+  .peachy-img{height:96px;width:auto;max-width:118px;object-fit:contain;
+    display:block;filter:drop-shadow(2px 2px 0 rgba(52,32,63,.12))}
+  .peachy-img.broken{display:none}
+  .peachy-img.broken + .face{display:block}
+  .face{display:none}  /* fallback if logo missing */
+  .ant{display:none}
+  .face{width:72px;height:60px;background:linear-gradient(180deg,#fff,#FFE9D6);
+    border:3px solid var(--ink);border-radius:46% 46% 42% 42%;position:relative;
+    transition:background .4s, transform .3s}
+  .eye{position:absolute;top:24px;width:12px;height:12px;border-radius:50%;
+    background:var(--ink);transition:all .25s}
+  .eye.l{left:17px}.eye.r{right:17px}
+  .eye::after{content:"";position:absolute;top:2px;left:2px;width:4px;height:4px;
+    border-radius:50%;background:#fff;opacity:.9}
+  .mouth{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);
+    width:18px;height:9px;border:2px solid var(--ink);border-top:0;
+    border-radius:0 0 18px 18px;transition:all .3s}
+  .zzz{position:absolute;right:2px;top:2px;font-weight:800;color:var(--amber);
+    opacity:0;font-size:10px}
+  /* state variants */
+  .face[data-s="awake"]{background:linear-gradient(180deg,#EBFFF8,#C8FFE9)}
+  .face[data-s="watch"]{background:linear-gradient(180deg,#EAF7FF,#CFEeffff)}
+  .face[data-s="offline"]{background:#EDE6F0;transform:rotate(-2deg)}
+  .face[data-s="asleep"] .eye{height:3px;top:29px;border-radius:3px}
+  .face[data-s="asleep"] .mouth{width:12px;height:5px}
+  .face[data-s="asleep"] .zzz{animation:floatz 2.4s ease-in-out infinite}
+  .face[data-s="awake"] .mouth{height:11px;width:20px}
+  .face[data-s="watch"] .eye{animation:scan 1.5s ease-in-out infinite}
+  .face[data-s="offline"] .eye{background:transparent;width:14px;height:14px;top:23px}
+  .face[data-s="offline"] .eye::before,
+  .face[data-s="offline"] .eye::after{content:"";position:absolute;top:6px;
+    left:0;width:14px;height:2px;background:#b9a9c2;border-radius:2px;opacity:1}
+  .face[data-s="offline"] .eye::before{transform:rotate(45deg)}
+  .face[data-s="offline"] .eye::after{transform:rotate(-45deg)}
+  .face[data-s="offline"] .mouth{transform:translateX(-50%) rotate(180deg);bottom:14px}
+
+  /* status LED strip — 3 + 3 grid */
+  .led-bar{display:grid;grid-template-columns:repeat(3,1fr);gap:4px 2px;
+    width:100%;max-width:118px;padding:2px 0 0;justify-items:center}
+  .led{display:flex;flex-direction:column;align-items:center;gap:1px;min-width:0}
+  .led .bulb{width:11px;height:11px;border-radius:50%;border:2px solid var(--ink);
+    background:#e6dde8;transition:background .2s, box-shadow .2s}
+  .led.on .bulb{box-shadow:0 0 0 2px rgba(52,32,63,.12)}
+  .led.on[data-led="net"] .bulb{background:var(--mint)}
+  .led.on[data-led="wake"] .bulb{background:var(--mint)}
+  .led.on[data-led="sleep"] .bulb{background:var(--amber)}
+  .led.on[data-led="watch"] .bulb{background:var(--sky)}
+  .led.on[data-led="talk"] .bulb{background:var(--grape)}
+  .led.on[data-led="busy"] .bulb{background:var(--coral);animation:ledpulse 1s ease-in-out infinite}
+  .led-lbl{font-family:var(--mono);font-size:8px;letter-spacing:.5px;color:#9a8aa3;
+    text-transform:uppercase}
+  .led.on .led-lbl{color:var(--ink);font-weight:700}
+
+  .pill{font-family:var(--mono);font-size:10px;font-weight:700;
+    border:2px solid var(--ink);border-radius:999px;padding:3px 10px;
+    background:var(--amber);display:flex;align-items:center;gap:6px}
+  .pill .dot{width:7px;height:7px;border-radius:50%;background:var(--ink)}
+  .pill[data-s="awake"]{background:var(--mint)}
+  .pill[data-s="watch"]{background:var(--sky)}
+  .pill[data-s="offline"]{background:#D9CCE0}
+  .meta{font-family:var(--mono);font-size:9px;color:#8a7791;text-align:center;
+    line-height:1.35;max-width:100%;word-break:break-all}
+  .deck-fan{display:block;font-family:var(--mono);font-size:9px;color:var(--peach);
+    text-align:center;text-decoration:none;margin-top:2px;line-height:1.3}
+  .deck-fan.warn{color:var(--coral);font-weight:700}
+  .deck-qr{width:100%;text-align:center;padding:2px 0 0}
+  .deck-qr img{width:96px;height:96px;display:block;margin:0 auto;
+    border:2px solid var(--ink);border-radius:10px;background:#fff;
+    image-rendering:pixelated}
+  .deck-qr .qr-lbl{font-family:var(--mono);font-size:7px;letter-spacing:1px;
+    text-transform:uppercase;color:#9a8aa3;margin:4px 0 0}
+  .deck-qr .qr-url{font-family:var(--mono);font-size:6px;color:#8a7791;
+    word-break:break-all;line-height:1.25;margin-top:2px;padding:0 2px}
+  .deck .b.abort{font-size:10px;padding:8px 6px;min-height:0;box-shadow:2px 2px 0 #7a1f1f}
+
+  /* ---- HEAD TUNE (collapsible) ---- */
+  .tune-fold{border:0;margin:0;padding:0;min-width:0}
+  .tune-fold > summary.tune-sum{
+    list-style:none;cursor:pointer;margin:0 0 8px 6px;
+    font-family:var(--mono);font-size:11px;letter-spacing:2px;
+    text-transform:uppercase;color:#8a7791;display:flex;align-items:center;gap:10px}
+  .tune-fold > summary.tune-sum::-webkit-details-marker{display:none}
+  .tune-fold > summary.tune-sum::before{content:"▸";font-size:12px;color:var(--peach);
+    transition:transform .15s}
+  .tune-fold[open] > summary.tune-sum::before{transform:rotate(90deg)}
+  .tune-fold > summary.tune-sum::after{content:"";flex:1;height:2px;
+    background:repeating-linear-gradient(90deg,#cdbcd3 0 6px,transparent 6px 12px)}
+  .tune-box{background:#fff;border:2px solid var(--ink);border-radius:12px;
+    box-shadow:3px 3px 0 var(--shadow);padding:10px;display:flex;flex-direction:column;gap:8px}
+  .tune-readout{font-family:var(--mono);font-size:10px;line-height:1.45;color:var(--ink);
+    background:#FFF9F2;border:1px dashed #cdbcd3;border-radius:8px;padding:6px 8px}
+  .tune-row{display:grid;grid-template-columns:38px 1fr 34px 26px 26px;gap:4px;align-items:center}
+  .tune-row label{font-family:var(--mono);font-size:9px;font-weight:700;text-transform:uppercase}
+  .tune-row input[type=range]{width:100%;accent-color:var(--peach)}
+  .tune-row .val{font-family:var(--mono);font-size:10px;text-align:right}
+  .vol-row{grid-template-columns:28px 1fr 36px 32px;margin-bottom:8px}
+  .vol-row button.b{font-size:14px;padding:2px 0}
+  .tune-row button.b{font-size:10px;padding:4px 0;min-height:0;border-radius:8px;
+    box-shadow:2px 2px 0 var(--shadow);flex-direction:row;justify-content:center}
+  .tune-actions{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+  .tune-actions .b{font-size:11px;padding:8px 6px;min-height:0}
+
+  /* ---- SECTION ---- */
+  .sec,.blk{animation:drop .5s both}
+  .lbl{font-family:var(--mono);font-size:11px;letter-spacing:2px;
+    text-transform:uppercase;color:#8a7791;margin:0 0 10px 6px;
+    display:flex;align-items:center;gap:10px}
+  .lbl::after{content:"";flex:1;height:2px;
+    background:repeating-linear-gradient(90deg,#cdbcd3 0 6px,transparent 6px 12px)}
+
+  .grid{display:grid;gap:10px;width:100%}
+  .g2{grid-template-columns:1fr 1fr}
+  .g4{grid-template-columns:repeat(2,1fr)}
+  .g1{grid-template-columns:1fr}
+  #expr-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+  #sound-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+  #turret-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  #turret-grid .b{font-size:12px;min-height:58px;padding:10px 8px}
+  #turret-grid .b .ic{font-size:18px}
+
+  /* control panel — one grid cell on desktop (avoids stacked grid-area:main) */
+  .panel{display:flex;flex-direction:column;gap:14px;min-width:0}
+  .blk{display:flex;flex-direction:column;gap:8px;min-width:0}
+
+  button.b{font-family:var(--disp);font-weight:700;font-size:17px;color:var(--ink);
+    border:3px solid var(--ink);border-radius:16px;padding:14px 12px;
+    background:#fff;box-shadow:4px 4px 0 var(--shadow);cursor:pointer;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:4px;transition:transform .07s, box-shadow .07s, filter .2s;
+    min-height:72px;width:100%;touch-action:manipulation}
+  button.b .ic{font-size:26px;line-height:1;flex-shrink:0}
+  button.b:active{transform:translate(4px,4px);box-shadow:0 0 0 var(--shadow)}
+  button.b:disabled{filter:grayscale(.6) opacity(.55);cursor:not-allowed}
+  .b.wake{background:var(--mint)} .b.sleep{background:var(--amber)}
+  .b.toggle{background:var(--peach)}
+  .b.x-yes{background:#C8FFE9} .b.x-no{background:#FFD7E2}
+  .b.x-curious{background:#E6DBFF} .b.x-lookaround{background:#D6F0FF}
+  .b.x-excited{background:#FFE3B0} .b.x-shy{background:#FFDCCB}
+  .b.x-stretch{background:#DDF6D2}
+  .b.x-wink{background:#FFE8F5}
+  .b.x-listen{background:#E0F4FF}
+  .b.snd{background:#FFF3C4;font-size:14px;min-height:52px}
+  .b.rw-start{background:var(--sky)} .b.rw-stop{background:var(--stop);color:#fff}
+  .b.rw-stop{border-color:#7a1f1f;box-shadow:5px 5px 0 #7a1f1f}
+  .b.converse{background:var(--grape);color:#fff;border-color:#3b1f6e;
+    box-shadow:4px 4px 0 #3b1f6e}
+  .b.converse:disabled{opacity:.45;box-shadow:2px 2px 0 #3b1f6e}
+  .b.cv-stop{background:#fff}
+  .b.cv-stop:disabled{opacity:.45}
+  .b.shutdown{background:var(--amber);margin-top:6px}
+  .b.snap{background:#FFE3B0}
+  .b.abort{background:var(--stop);color:#fff;border-color:#7a1f1f;
+    box-shadow:5px 5px 0 #7a1f1f;font-family:var(--mono);font-size:14px;padding:14px}
+  .snap-head{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+  .snap-opts{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;margin-top:4px}
+  .snap-opt{display:flex;align-items:center;gap:4px;font-family:var(--mono);font-size:9px;color:#8a7791}
+  .snap-opt select{font-family:var(--mono);font-size:9px;border:2px solid var(--ink);
+    border-radius:8px;padding:3px 6px;background:#fff;color:var(--ink);max-width:88px}
+  #snap{display:none;width:100%;margin-top:8px;border:3px solid var(--ink);
+    border-radius:18px;box-shadow:5px 5px 0 var(--shadow)}
+  #snap.show{display:block;animation:drop .4s both}
+  #snapMeta{font-family:var(--disp);font-size:13px;line-height:1.35;color:var(--ink);
+    margin-top:8px;min-height:2.4em}
+  #snapMeta .when{display:block;font-weight:700;font-size:15px;margin-bottom:2px}
+  #snapMeta .detail{font-family:var(--mono);font-size:10px;color:#8a7791}
+  #snapMeta.stale .when{color:var(--coral)}
+  #snapMeta.err .when{color:var(--coral)}
+  #snapMeta.dark .when{color:var(--coral)}
+
+  /* ---- LOG STREAM ---- */
+  .log-head{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap}
+  .log-head .lbl{margin:0;flex:1}
+  .log-tools{display:flex;gap:6px;align-items:center}
+  .log-tools button{font-family:var(--mono);font-size:10px;font-weight:700;
+    border:2px solid var(--ink);border-radius:8px;padding:5px 10px;background:#fff;
+    cursor:pointer;box-shadow:2px 2px 0 var(--shadow)}
+  .log-tools button:active{transform:translate(2px,2px);box-shadow:none}
+  .log-count{font-family:var(--mono);font-size:9px;color:#9a8aa3}
+  .log-recent{background:#fff;border:2px solid var(--ink);border-radius:12px;
+    box-shadow:3px 3px 0 var(--shadow);padding:6px 10px;margin-bottom:8px;
+    font-family:var(--mono);font-size:10px;line-height:1.45;min-height:0}
+  .log-recent .row{padding:3px 0;border-bottom:1px dashed #eee5d8;white-space:pre-wrap;
+    word-break:break-word}
+  .log-recent .row:last-child{border-bottom:none}
+  .log-recent .lbl-mini{font-family:var(--mono);font-size:8px;letter-spacing:1.5px;
+    text-transform:uppercase;color:#9a8aa3;margin:0 0 4px}
+  .log-pane{background:#fff;border:3px solid var(--ink);border-radius:18px;
+    box-shadow:5px 5px 0 var(--shadow);padding:10px 12px;
+    font-family:var(--mono);font-size:11px;line-height:1.5;
+    min-height:220px;max-height:42vh;overflow-y:auto;color:var(--ink);
+    user-select:text;-webkit-user-select:text}
+  .log-pane .row{padding:2px 0;border-bottom:1px dashed #eee5d8;white-space:pre-wrap;word-break:break-word}
+  .log-pane .row:last-child{border-bottom:none}
+  .log-pane .ok{color:#1f7a5c}
+  .log-pane .err{color:#a3262d}
+  .log-pane .ts{color:#a08fa9;margin-right:6px}
+  .log-pane .act{font-weight:700}
+  .sec-log{display:flex;flex-direction:column;min-height:0}
+
+  /* ---- DESKTOP LAYOUT (>= 980px wide): 3-column grid, one-page ---- */
+  @media (min-width:980px){
+    body{padding:14px 18px}
+    .wrap{display:grid;max-width:1480px;gap:12px 14px;
+      grid-template-columns:minmax(124px,138px) minmax(300px,420px) minmax(300px,1fr);
+      grid-template-areas:
+        "title  title  title"
+        "deck   main   out"
+        "deck   main   out";
+      align-items:start}
+    .title{grid-area:title;margin:0}
+    .deck{grid-area:deck;padding:8px 6px 6px;gap:4px}
+    .brand-name{font-size:14px}
+    .brand-sub{font-size:5.5px;letter-spacing:.09em;max-width:108px}
+    .peachy-img{height:110px;max-width:128px}
+    .deck-qr img{width:108px;height:108px}
+    .deck .face{width:56px;height:46px}
+    .deck .eye{top:22px;width:11px;height:11px}
+    .deck .eye.l{left:15px} .deck .eye.r{right:15px}
+    .deck .mouth{bottom:10px}
+    .led-bar{gap:4px 6px}
+    .col-main.panel{grid-area:main;gap:10px;max-width:420px;width:100%;justify-self:start}
+    .wrap{min-height:0;align-items:start}
+    .deck{align-self:start;height:auto;width:100%;max-width:138px}
+    .col-out{grid-area:out;display:flex;flex-direction:column;gap:12px;
+      min-height:0}
+    .sec-log{flex:1;display:flex;flex-direction:column;min-height:0}
+    .sec-log .log-pane{flex:1;max-height:none;min-height:min(520px,calc(100dvh - 280px))}
+    .sec,.blk{margin:0}
+    .panel .blk{gap:6px}
+    .panel .lbl{margin-bottom:4px;font-size:10px}
+    .panel .grid{gap:8px}
+    /* compact tile buttons — room for more controls later */
+    .panel #expr-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+    .panel #sound-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+    .panel #turret-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+    .panel .grid.g4{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .panel .grid.g2{grid-template-columns:repeat(2,minmax(0,1fr))}
+    button.b{font-size:12px;padding:8px 10px;min-height:0;height:auto;
+      box-shadow:2px 2px 0 var(--shadow);border-width:2px;border-radius:10px;
+      flex-direction:row;justify-content:flex-start;text-align:left}
+    button.b .ic{font-size:17px;width:1.4em;text-align:center}
+    button.b:active{transform:translate(2px,2px);box-shadow:0 0 0 var(--shadow)}
+    .b.rw-stop{box-shadow:2px 2px 0 #7a1f1f}
+    .b.converse{box-shadow:2px 2px 0 #3b1f6e}
+    .b.abort{box-shadow:2px 2px 0 #7a1f1f}
+    #snap{margin-top:0}
+    #snap.show{max-height:340px;object-fit:cover}
+    /* no bottom padding for floating safe-area / no toast offset needed */
+    body{padding-bottom:14px}
+  }
+
+  /* ---- TOAST ---- */
+  #toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));
+    transform:translate(-50%,140%);max-width:440px;width:calc(100% - 32px);
+    background:var(--ink);color:#fff;font-family:var(--mono);font-size:13px;
+    border:3px solid #fff;border-radius:16px;padding:13px 16px;
+    box-shadow:0 8px 0 rgba(52,32,63,.3);transition:transform .35s cubic-bezier(.2,1.4,.4,1);
+    z-index:50;display:flex;gap:10px;align-items:center}
+  #toast.show{transform:translate(-50%,0)}
+  #toast.ok{background:#1f7a5c} #toast.err{background:#a3262d}
+  #toast b{font-family:var(--disp);font-size:15px}
+
+  @keyframes drop{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+  @keyframes sway{0%,100%{transform:rotate(-7deg)}50%{transform:rotate(7deg)}}
+  @keyframes floatz{0%{opacity:0;transform:translateY(4px) scale(.8)}
+    40%{opacity:1}100%{opacity:0;transform:translateY(-14px) scale(1.1)}}
+  @keyframes scan{0%,100%{transform:translateX(-3px)}50%{transform:translateX(4px)}}
+  @keyframes ledpulse{0%,100%{opacity:1}50%{opacity:.55}}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+<link rel="stylesheet" href="/static/nav.css">
+</head>
+<body>
+<div id="peachyNav"></div>
+<div class="wrap">
+
+  <div class="title"><h1>Peachy</h1><span class="tag">control deck</span></div>
+
+  <div class="deck">
+    <div class="brand-mark">
+      <div class="glyph">
+        <img class="peachy-img" id="peachyImg" src="/static/peachy-icon.png" alt="Peachy">
+        <div class="face" id="face" data-s="offline">
+          <div class="eye l"></div><div class="eye r"></div>
+          <div class="mouth"></div><div class="zzz">z z</div>
+        </div>
+      </div>
+      <p class="brand-name">peachy</p>
+      <p class="brand-sub">Pomfret Reachy Mini</p>
+    </div>
+    <div class="deck-qr" id="deckQr" aria-label="Scan to open dashboard">
+      <img id="deckQrImg" src="/api/qr.png" alt="QR code for dashboard URL" width="108" height="108" />
+      <p class="qr-lbl">Scan to control</p>
+      <p class="qr-url" id="deckQrUrl">loading…</p>
+    </div>
+    <div class="led-bar" id="ledBar" aria-label="Peachy status">
+      <div class="led" data-led="net" title="Daemon reachable"><span class="bulb"></span><span class="led-lbl">link</span></div>
+      <div class="led" data-led="wake" title="Awake"><span class="bulb"></span><span class="led-lbl">wake</span></div>
+      <div class="led" data-led="sleep" title="Asleep"><span class="bulb"></span><span class="led-lbl">sleep</span></div>
+      <div class="led" data-led="watch" title="Room watch"><span class="bulb"></span><span class="led-lbl">watch</span></div>
+      <div class="led" data-led="talk" title="Conversation"><span class="bulb"></span><span class="led-lbl">talk</span></div>
+      <div class="led" data-led="busy" title="Busy"><span class="bulb"></span><span class="led-lbl">busy</span></div>
+    </div>
+    <div class="pill" id="pill" data-s="offline">
+      <span class="dot"></span><span id="pillTxt">connecting…</span>
+    </div>
+    <div class="meta" id="meta">—</div>
+    <a href="/fan" class="deck-fan" id="deckFan" title="Fan monitor">🌀 fan —</a>
+
+    <div id="modeSwitcher" style="width:100%;margin-bottom:6px">
+      <p class="lbl" style="margin:0 0 4px;text-align:center;font-size:10px;color:#7a6c80">mode</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:3px">
+        <button class="b" data-mode-set="open"         title="Free the mic for student code"
+                style="font-size:10px;padding:6px 2px">📚 open</button>
+        <button class="b" data-mode-set="conversation" title="Pollen conversation app"
+                style="font-size:10px;padding:6px 2px">💬 convo</button>
+        <button class="b" data-mode-set="glados"       title="Peachy + GlaDOS turret"
+                style="font-size:10px;padding:6px 2px">🤖 peachy</button>
+      </div>
+      <p id="modeNow" style="margin:4px 0 0;text-align:center;font-size:10px;
+        font-family:var(--mono);color:#9a8aa3">mode: …</p>
+    </div>
+
+    <button id="btnPeachyMute" class="b" style="width:100%;margin-bottom:6px;font-size:13px"
+            title="Toggle Peachy mic/speaker bridge (v0.1)">
+      <span id="peachyMuteIcon">🎙</span> <span id="peachyMuteLabel">bridge: …</span>
+    </button>
+    <button class="b abort" data-abort="1" style="width:100%">⛔ abort</button>
+    <button class="b shutdown" data-shutdown="1" style="width:100%;margin-top:6px">🌙 shut down</button>
+  </div>
+
+  <div class="col-main panel">
+    <div class="blk">
+      <p class="lbl">Main</p>
+      <div class="grid g4 main-cluster">
+        <button class="b toggle" data-do="toggle"><span class="ic">🔁</span>Toggle</button>
+        <button class="b wake" data-do="wake"><span class="ic">🌞</span>Wake</button>
+        <button class="b sleep" data-do="sleep"><span class="ic">😴</span>Sleep</button>
+        <button class="b snap" data-live-snap><span class="ic">📷</span>Picture</button>
+      </div>
+    </div>
+    <details class="blk tune-fold" id="headTuneFold">
+      <summary class="tune-sum">Head tune — wake default</summary>
+      <div class="tune-box">
+        <div class="tune-readout" id="headReadout">loading offsets…</div>
+        <div class="tune-row">
+          <label>pitch</label>
+          <input type="range" id="slPitch" min="-25" max="25" step="0.5" value="0">
+          <span class="val" id="vPitch">0°</span>
+          <button type="button" class="b" data-nudge="pitch,-1">−</button>
+          <button type="button" class="b" data-nudge="pitch,1">+</button>
+        </div>
+        <div class="tune-row">
+          <label>roll</label>
+          <input type="range" id="slRoll" min="-25" max="25" step="0.5" value="0">
+          <span class="val" id="vRoll">0°</span>
+          <button type="button" class="b" data-nudge="roll,-1">−</button>
+          <button type="button" class="b" data-nudge="roll,1">+</button>
+        </div>
+        <div class="tune-row">
+          <label>yaw</label>
+          <input type="range" id="slYaw" min="-40" max="40" step="0.5" value="0">
+          <span class="val" id="vYaw">0°</span>
+          <button type="button" class="b" data-nudge="yaw,-1">−</button>
+          <button type="button" class="b" data-nudge="yaw,1">+</button>
+        </div>
+        <p style="font-family:var(--mono);font-size:9px;color:#9a8aa3;margin:0">
+          Tune while awake. <b>Capture live</b> = save where the head is now.
+          <b>Save home</b> = save slider values. Both apply on every wake.
+        </p>
+        <div class="tune-actions">
+          <button type="button" class="b wake" data-head="wake"><span class="ic">🌞</span>Wake</button>
+          <button type="button" class="b snap" id="btnLive" data-head="live"><span class="ic">▶</span>Live</button>
+          <button type="button" class="b cv-stop" id="btnPause" data-head="pause" disabled><span class="ic">⏸</span>Pause</button>
+          <button type="button" class="b" data-head="move" style="background:#E6DBFF">Apply</button>
+          <button type="button" class="b" data-head="save" style="background:var(--mint)">Save home</button>
+          <button type="button" class="b" data-head="capture" style="background:#E6DBFF">Capture live</button>
+          <button type="button" class="b" data-head="zero">Zero</button>
+          <button type="button" class="b" data-head="reload">Reload saved</button>
+        </div>
+        <p id="previewStatus" style="font-family:var(--mono);font-size:9px;color:#9a8aa3;margin:0">
+          Wake first, then Live while tuning. Pause → Save offset.
+        </p>
+      </div>
+    </details>
+    <details class="blk tune-fold" id="bodyYawFold">
+      <summary class="tune-sum">Body turn — turntable</summary>
+      <div class="tune-box">
+        <div class="tune-readout" id="bodyReadout">loading…</div>
+        <div class="tune-row">
+          <label>yaw</label>
+          <input type="range" id="slBodyYaw" min="-160" max="160" step="1" value="0">
+          <span class="val" id="vBodyYaw">0°</span>
+          <button type="button" class="b" data-body-nudge="-5">−</button>
+          <button type="button" class="b" data-body-nudge="5">+</button>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:5px;margin-top:4px">
+          <button type="button" class="b" data-body-preset="-120" style="font-size:9px;min-height:0;padding:6px 3px">◀◀<br>−120°</button>
+          <button type="button" class="b" data-body-preset="-60" style="font-size:9px;min-height:0;padding:6px 3px">◀<br>−60°</button>
+          <button type="button" class="b" data-body-preset="0" style="font-size:9px;min-height:0;padding:6px 3px;background:var(--mint)">⬛<br>Ctr</button>
+          <button type="button" class="b" data-body-preset="60" style="font-size:9px;min-height:0;padding:6px 3px">▶<br>+60°</button>
+          <button type="button" class="b" data-body-preset="120" style="font-size:9px;min-height:0;padding:6px 3px">▶▶<br>+120°</button>
+        </div>
+        <div class="tune-actions" style="margin-top:4px">
+          <button type="button" class="b" id="btnBodyDiag" style="background:#E6DBFF;min-height:0;font-size:11px"><span class="ic">🔬</span>Diag (~15s)</button>
+          <button type="button" class="b" id="btnBodyRead" style="min-height:0;font-size:11px"><span class="ic">🔄</span>Read yaw</button>
+        </div>
+        <p id="bodyHint" style="font-family:var(--mono);font-size:9px;color:#9a8aa3;margin:0">
+          Slide or tap a preset — turn on Live preview (Snapshot panel) to watch the view update.
+        </p>
+      </div>
+    </details>
+    <div class="blk">
+      <p class="lbl">Expressions</p>
+      <div class="grid" id="expr-grid">
+        <button class="b x-yes" data-ex="yes"><span class="ic">👍</span>Yes</button>
+        <button class="b x-no" data-ex="no"><span class="ic">🙅</span>No</button>
+        <button class="b x-curious" data-ex="curious"><span class="ic">🤔</span>Curious</button>
+        <button class="b x-lookaround" data-ex="lookaround"><span class="ic">👀</span>Look around</button>
+        <button class="b x-excited" data-ex="excited"><span class="ic">🎉</span>Excited</button>
+        <button class="b x-shy" data-ex="shy"><span class="ic">😳</span>Shy</button>
+        <button class="b x-stretch" data-ex="stretch"><span class="ic">🙆</span>Stretch</button>
+        <button class="b x-wink" data-ex="wink"><span class="ic">😉</span>Wink</button>
+        <button class="b x-listen" data-ex="listen"><span class="ic">👂</span>Listen</button>
+      </div>
+    </div>
+    <div class="blk">
+      <p class="lbl">Soundboard</p>
+      <div class="tune-row vol-row" id="volRow">
+        <label for="volSlider">Vol</label>
+        <input type="range" id="volSlider" min="0" max="100" step="1" value="100"
+               aria-label="Speaker volume">
+        <span class="val" id="volVal">100%</span>
+        <button type="button" class="b" id="btnVolTest" title="Test at current volume">🔊</button>
+      </div>
+      <div class="grid" id="sound-grid">
+        <button type="button" class="b snd" data-sound="wake"><span class="ic">🌅</span>Wake</button>
+        <button type="button" class="b snd" data-sound="sleep"><span class="ic">🌙</span>Sleep</button>
+        <button type="button" class="b snd" data-sound="boop"><span class="ic">🔔</span>Boop</button>
+      </div>
+      <p id="soundCustomHint" style="font-family:var(--mono);font-size:9px;color:#9a8aa3;margin:0"></p>
+    </div>
+    <details class="blk tune-fold" id="turretFold">
+      <summary class="tune-sum">Portal turret — sound test</summary>
+      <div class="tune-box">
+        <p style="font-family:var(--mono);font-size:9px;line-height:1.45;color:#9a8aa3;margin:0">
+          Auto cues: wake→random hello, snap→Searching; sleep→random farewell + snore
+          (<span id="turretCueNote">on</span>).
+        </p>
+        <div class="grid" id="turret-grid"></div>
+        <p id="turretSyncHint" style="font-family:var(--mono);font-size:9px;color:#9a8aa3;margin:0"></p>
+        <div style="margin-top:6px">
+          <button type="button" class="b" id="btnTurretSync" style="background:var(--mint);min-height:0;font-size:11px;opacity:.7">
+            <span class="ic">⬆</span>Re-sync WAVs
+          </button>
+        </div>
+      </div>
+    </details>
+    <details class="blk tune-fold" id="studentLightFold">
+      <summary class="tune-sum">Light wake / sleep — student panel</summary>
+      <div class="tune-box" id="studentLightPanel">
+        <p style="font-family:var(--mono);font-size:9px;line-height:1.45;color:#9a8aa3;margin:0">
+          <b>Your assignment:</b> build this panel — live room brightness, lit/dark indicator,
+          start/stop auto wake-on-light / sleep-on-dark. Spec:
+          <code>dashboard/student/LIGHT-PANEL.md</code>
+        </p>
+        <div class="tune-readout" id="lightReadout">
+          Peachy camera only — no laptop webcam. Student builds live readout here
+          (poll <code>/api/light</code> when this panel is open).
+        </div>
+        <div class="tune-actions">
+          <button type="button" class="b snap" id="btnLiveForLight" data-head="live" style="min-height:0;font-size:12px">
+            <span class="ic">▶</span>Live (Peachy cam)
+          </button>
+          <button type="button" class="b rw-start" data-rw="start" style="min-height:0;font-size:12px">
+            <span class="ic">📡</span>Start room watch
+          </button>
+          <button type="button" class="b rw-stop" data-rw="stop" style="min-height:0;font-size:12px">
+            <span class="ic">🛑</span>Stop
+          </button>
+        </div>
+        <p id="lightHint" style="font-family:var(--mono);font-size:9px;color:#9a8aa3;margin:0">
+          CLI: <code>python scripts/light_probe.py --json</code> (Peachy cam via SSH)
+        </p>
+      </div>
+    </details>
+    <div class="blk">
+      <p class="lbl">Room watch</p>
+      <p style="font-family:var(--mono);font-size:9px;line-height:1.45;color:#9a8aa3;margin:0 0 8px">
+        Live lights indicator, sensitivity &amp; latency → <a href="/watch" style="color:var(--peach)">Watch tab</a>
+      </p>
+    </div>
+  </div>
+
+  <aside class="col-out">
+    <div class="sec">
+      <div class="snap-head">
+        <p class="lbl" style="margin:0">Snapshot</p>
+      </div>
+      <div class="snap-opts">
+        <label class="snap-opt">Rate
+          <select id="previewFps" title="Frames per second (capture + SSH pull)">
+            <option value="0.5">0.5/s</option>
+            <option value="1" selected>1/s</option>
+            <option value="2">2/s</option>
+            <option value="3">3/s</option>
+          </select>
+        </label>
+        <label class="snap-opt">Quality
+          <select id="previewQuality" title="JPEG quality on robot (lower = faster over SSH)">
+            <option value="30">Low</option>
+            <option value="45" selected>Med</option>
+            <option value="58">High</option>
+            <option value="75">Max</option>
+          </select>
+        </label>
+        <label class="snap-opt">Size
+          <select id="previewScale" title="Frame width on robot before transfer">
+            <option value="0.25">Tiny</option>
+            <option value="0.5" selected>Half</option>
+            <option value="0.75">¾</option>
+            <option value="1">Full</option>
+          </select>
+        </label>
+        <label class="snap-opt">Mode
+          <select id="previewMode" title="Stream = every frame; Motion = save only on big scene change (visitor watch)">
+            <option value="stream" selected>Stream</option>
+            <option value="motion">Motion</option>
+          </select>
+        </label>
+      </div>
+      <div class="grid g1" style="margin-top:8px">
+        <button type="button" class="b" data-snap style="background:#fff"><span class="ic">📸</span>Wake &amp; snap</button>
+      </div>
+      <img id="snap" alt="camera view" />
+      <p id="snapMeta">—</p>
+    </div>
+    <div class="sec sec-log">
+      <div class="log-head">
+        <p class="lbl">Activity log</p>
+        <div class="log-tools">
+          <span class="log-count" id="logCount"></span>
+          <button type="button" id="logCopy" title="Copy last 50 lines as plain text">Copy log</button>
+        </div>
+      </div>
+      <p class="lbl-mini" style="margin:0 0 6px 6px;font-family:var(--mono);font-size:8px;
+        letter-spacing:1.5px;text-transform:uppercase;color:#9a8aa3">Latest</p>
+      <div id="logRecent" class="log-recent">waiting for activity…</div>
+      <div id="log" class="log-pane" tabindex="0">waiting for activity…</div>
+    </div>
+  </aside>
+
+</div>
+
+<div id="toast"><b id="tT">·</b><span id="tM"></span></div>
+
+<script>
+const $=s=>document.querySelector(s);
+const face=$("#face"), pill=$("#pill"), pillTxt=$("#pillTxt"), meta=$("#meta");
+const peachyImg=$("#peachyImg");
+const toast=$("#toast");
+let busy=false;
+const LOG_SHOW=100;
+const LOG_COPY=50;
+let _logRows=[];
+
+if(peachyImg){
+  peachyImg.addEventListener("error",()=>peachyImg.classList.add("broken"));
+  if(peachyImg.complete && !peachyImg.naturalWidth) peachyImg.classList.add("broken");
+}
+
+function showToast(ok,title,msg){
+  $("#tT").textContent=title; $("#tM").textContent=msg||"";
+  toast.className="show "+(ok===true?"ok":ok===false?"err":"");
+  clearTimeout(toast._t); toast._t=setTimeout(()=>toast.className="",3200);
+}
+function setButtons(disabled){
+  document.querySelectorAll("button.b").forEach(b=>b.disabled=disabled);
+}
+function render(s){
+  let mode="offline";
+  let talking=false;
+  if(s.daemon){
+    if(s.conversation){ mode="awake"; talking=true; }
+    else if(s.roomwatch) mode="watch";
+    else if(s.state==="awake") mode="awake";
+    else if(s.state==="asleep") mode="asleep";
+    else mode="awake";
+  }
+  face.dataset.s=mode; pill.dataset.s=(mode==="watch"?"watch":mode);
+  const cs=s.convo_status||(talking?"ready":"idle");
+  pillTxt.textContent= talking
+    ? (cs==="starting"?"LOADING…":cs==="error"?"CONV ERR":"TALKING")
+    : {offline:"OFFLINE",asleep:"ASLEEP",awake:"READY",watch:"WATCHING"}[mode];
+  meta.textContent=s.host||"—";
+  document.querySelectorAll(".led").forEach(el=>{
+    const k=el.dataset.led;
+    let on=false;
+    if(k==="net") on=!!s.daemon;
+    else if(k==="wake") on=s.daemon && s.state==="awake" && !s.conversation;
+    else if(k==="sleep") on=s.daemon && s.state==="asleep";
+    else if(k==="watch") on=!!s.roomwatch;
+    else if(k==="talk") on=!!s.conversation;
+    else if(k==="busy") on=!!s.busy;
+    el.classList.toggle("on",on);
+  });
+  renderPeachyBridge(s.peachy);
+}
+
+function renderPeachyBridge(p){
+  const btn=document.getElementById("btnPeachyMute");
+  const icon=document.getElementById("peachyMuteIcon");
+  const lbl=document.getElementById("peachyMuteLabel");
+  if(!btn||!icon||!lbl) return;
+  if(!p||!p.reachable){
+    btn.style.background="#e0d8ce";
+    btn.style.color="#7a6c80";
+    icon.textContent="🔌";
+    lbl.textContent="bridge: offline";
+    btn.disabled=true;
+    btn.dataset.muted="";
+    return;
+  }
+  btn.disabled=false;
+  if(p.muted){
+    btn.style.background="#9c8aa3";
+    btn.style.color="#fff";
+    btn.style.borderColor="#3b1f6e";
+    icon.textContent="🔇";
+    lbl.textContent="bridge: MUTED — tap to go live";
+    btn.dataset.muted="1";
+  }else{
+    btn.style.background="#ff5252";
+    btn.style.color="#fff";
+    btn.style.borderColor="#7a1a1a";
+    icon.textContent="🔴";
+    lbl.textContent="bridge: LIVE — tap to mute";
+    btn.dataset.muted="";
+  }
+}
+
+(function wirePeachyBridge(){
+  const btn=document.getElementById("btnPeachyMute");
+  if(!btn) return;
+  btn.addEventListener("click", async ()=>{
+    const muted=btn.dataset.muted==="1";
+    const url=muted?"/api/peachy/unmute":"/api/peachy/mute";
+    btn.disabled=true;
+    try{
+      const r=await fetch(url,{method:"POST"});
+      const d=await r.json();
+      showToast(d.ok!==false, muted?"Bridge live":"Bridge muted", d.msg||"");
+      poll(); // refresh state
+    }catch(e){
+      showToast(false, "Bridge error", String(e));
+    }finally{ btn.disabled=false; }
+  });
+})();
+
+(function wireModeSwitcher(){
+  const buttons=document.querySelectorAll("[data-mode-set]");
+  if(!buttons.length) return;
+  const label=document.getElementById("modeNow");
+
+  async function refreshMode(){
+    try{
+      const d=await (await fetch("/api/peachy/mode")).json();
+      const m=d.mode||"?";
+      if(label) label.textContent="mode: "+m;
+      buttons.forEach(b=>{
+        const on=b.dataset.modeSet===m;
+        b.style.background = on ? "#FFB200" : "var(--orange-soft)";
+        b.style.color      = on ? "#2c1442" : "var(--ink)";
+        b.style.borderColor= on ? "#a96b00" : "var(--orange)";
+        b.style.fontWeight = on ? "700" : "500";
+      });
+    }catch(e){}
+  }
+
+  buttons.forEach(b=>{
+    b.addEventListener("click", async ()=>{
+      const mode=b.dataset.modeSet;
+      buttons.forEach(x=>x.disabled=true);
+      try{
+        const r=await fetch("/api/peachy/mode/"+encodeURIComponent(mode),{method:"POST"});
+        const d=await r.json();
+        showToast(d.ok!==false, "Mode → "+mode, d.msg||"");
+        // Multi-step mode switches need a moment for systemd to settle
+        setTimeout(()=>{refreshMode(); poll();}, 800);
+      }catch(e){
+        showToast(false, "Mode error", String(e));
+      }finally{ buttons.forEach(x=>x.disabled=false); }
+    });
+  });
+
+  refreshMode();
+  setInterval(refreshMode, 5000);
+})();
+async function pollFanMini(){
+  try{
+    const d=await (await fetch("/api/fan")).json();
+    const el=$("#deckFan");
+    if(!el||!d||d.ok===false) return;
+    const warn=d.recommend_restore||d.trip_lowered||d.cusp_risk;
+    el.classList.toggle("warn",!!warn);
+    el.textContent=`🌀 ${d.temp_c}°C · pwm ${d.pwm??"?"} · trip₁ ${d.trip_1_c}°C`
+      +(warn?" ⚠":"");
+  }catch(e){}
+}
+async function poll(){
+  try{ const r=await fetch("/api/status"); render(await r.json()); }
+  catch(e){ face.dataset.s="offline"; pill.dataset.s="offline";
+    pillTxt.textContent="NO SERVER"; }
+  pollFanMini();
+}
+async function act(url,label){
+  if(busy) return;
+  busy=true; setButtons(true); showToast(null,"Peachy…",label+" — hold on");
+  try{
+    const r=await fetch(url,{method:"POST"});
+    if(r.status===409){
+      showToast(false,"Busy","Peachy is busy — one driver at a time, watch the BUSY light");
+      poll(); return;
+    }
+    const d=await r.json().catch(()=>({ok:r.ok,msg:r.statusText}));
+    showToast(d.ok!==false, d.ok!==false?"Done!":"Hmm",
+      (d.msg||"").split("\n").pop()||label);
+  }catch(e){ showToast(false,"Failed",String(e)); }
+  finally{ busy=false; setButtons(false); poll(); }
+}
+async function loadDeckQr(){
+  try{
+    const d=await (await fetch("/api/qr")).json();
+    const img=$("#deckQrImg");
+    if(img){
+      img.onerror=()=>{ img.alt="QR failed — run ./run.sh --restart"; };
+      img.src="/api/qr.png?t="+Date.now();
+    }
+    const u=$("#deckQrUrl");
+    if(u){
+      if(d.url) u.textContent=d.url.replace(/^https?:\/\//,"");
+      else if(d.msg) u.textContent=d.msg;
+      else u.textContent="Set PEACHY_QR_URL or run tool-qr.py --pin";
+    }
+  }catch(e){
+    const u=$("#deckQrUrl");
+    if(u) u.textContent="QR unavailable — restart dashboard";
+  }
+}
+document.addEventListener("click",e=>{
+  const b=e.target.closest("button.b"); if(!b||b.disabled) return;
+  if(b.dataset.do)  act("/api/do/"+b.dataset.do, b.textContent.trim());
+  if(b.dataset.ex)  act("/api/express/"+b.dataset.ex, b.textContent.trim());
+  if(b.dataset.rw)  act("/api/roomwatch/"+b.dataset.rw, b.textContent.trim());
+  if(b.dataset.shutdown) doShutdown();
+  if("snap" in b.dataset) takeSnap();
+  if("liveSnap" in b.dataset) takeLiveSnap();
+  if(b.dataset.sound) playSound(b.dataset.sound);
+  if(b.dataset.abort) doAbort();
+  if(b.dataset.nudge) nudgeHead(b.dataset.nudge);
+  if(b.dataset.head) headAction(b.dataset.head);
+});
+async function doAbort(){
+  showToast(null,"Aborting…","halting motion + services");
+  try{
+    const r=await fetch("/api/abort",{method:"POST"});
+    const d=await r.json().catch(()=>({ok:r.ok,msg:r.statusText}));
+    showToast(d.ok!==false,"Aborted", d.msg||"");
+  }catch(e){ showToast(false,"Abort failed",String(e)); }
+  finally{ busy=false; setButtons(false); poll(); pollLog(); }
+}
+async function doShutdown(){
+  if(!confirm("Stop conversation, room watch, preview, and put Peachy to sleep?")) return;
+  await act("/api/shutdown","Shut down Peachy");
+}
+function formatLogLine(x){
+  const st=x.ok===true?"OK":x.ok===false?"FAIL":"—";
+  return `${x.t}  ${x.action}  ${st}  ${(x.msg||"").trim()}`;
+}
+function logRowHtml(x, compact){
+  const cls=x.ok===true?"ok":x.ok===false?"err":"";
+  const m=(x.msg||"").replace(/[<>&]/g, c=>({ '<':'&lt;','>':'&gt;','&':'&amp;' }[c]));
+  const msg=compact&&m.length>80?m.slice(0,77)+"…":m;
+  return `<div class="row ${cls}"><span class="ts">${x.t}</span><span class="act">${x.action}</span>  ${msg}</div>`;
+}
+async function pollLog(){
+  try{
+    const r=await fetch(`/api/log?n=${LOG_SHOW}`);
+    const rows=await r.json();
+    _logRows=rows;
+    const el=document.getElementById("log");
+    const recentEl=document.getElementById("logRecent");
+    const cnt=document.getElementById("logCount");
+    if(cnt) cnt.textContent=rows.length?`${rows.length} lines`:"";
+    if(!rows.length){
+      if(recentEl) recentEl.textContent="(no activity yet)";
+      el.textContent="(no activity yet)";
+      return;
+    }
+    const latest=rows.slice(-3).reverse();
+    if(recentEl) recentEl.innerHTML=latest.map(x=>logRowHtml(x,true)).join("");
+    const ordered=[...rows].reverse();
+    el.innerHTML=ordered.map(x=>logRowHtml(x,false)).join("");
+  }catch(e){}
+}
+async function playSound(id){
+  showToast(null,"Sound…",id.replace(/^turret\//,""));
+  try{
+    const r=await fetch("/api/sound/"+encodeURIComponent(id),{method:"POST"});
+    const d=await r.json().catch(()=>({ok:r.ok,msg:r.statusText}));
+    showToast(d.ok!==false,"Sound",d.msg||id);
+    pollLog();
+  }catch(e){ showToast(false,"Sound",String(e)); }
+}
+async function syncTurretSounds(){
+  const hint=$("#turretSyncHint");
+  if(hint) hint.textContent="Syncing…";
+  try{
+    const r=await fetch("/api/sounds/turret/sync",{method:"POST"});
+    const d=await r.json().catch(()=>({ok:r.ok,msg:r.statusText}));
+    showToast(d.ok!==false,"Turret sync",d.msg||"done");
+    if(hint) hint.textContent=d.ok!==false?(d.msg||"synced"):(d.msg||"failed");
+    loadTurretSounds();
+    pollLog();
+  }catch(e){
+    showToast(false,"Turret sync",String(e));
+    if(hint) hint.textContent=String(e);
+  }
+}
+async function loadTurretSounds(){
+  const grid=$("#turret-grid");
+  const hint=$("#turretSyncHint");
+  if(!grid) return;
+  try{
+    const d=await (await fetch("/api/sounds/turret")).json();
+    grid.innerHTML="";
+    (d.sounds||[]).forEach(s=>{
+      const b=document.createElement("button");
+      b.type="button";
+      b.className="b snd";
+      b.dataset.sound="turret/"+s.id;
+      const cue=Object.entries(d.cues||{}).find(([,v])=>v===s.id);
+      const tag=cue?` · ${cue[0]}`:"";
+      b.innerHTML=`<span class="ic">${s.on_robot?"🔊":"📤"}</span>${s.label}${tag}`;
+      grid.appendChild(b);
+    });
+    const n=(d.sounds||[]).filter(s=>s.on_robot).length;
+    if(hint) hint.textContent=n===(d.sounds||[]).length?`All ${n} clips ready`:`${n}/${(d.sounds||[]).length} on robot — click Re-sync WAVs to upload missing`;
+  }catch(e){
+    if(hint) hint.textContent="Could not load turret catalog";
+  }
+}
+document.getElementById("btnTurretSync")?.addEventListener("click",syncTurretSounds);
+// Auto-sync WAVs to robot the first time the turret fold is opened
+let _turretAutoSynced=false;
+document.getElementById("turretFold")?.addEventListener("toggle",function(){
+  if(this.open && !_turretAutoSynced){ _turretAutoSynced=true; syncTurretSounds(); }
+});
+
+let _volBusy=false;
+function _setVolUi(v){
+  const sl=$("#volSlider"), val=$("#volVal");
+  if(sl) sl.value=String(v);
+  if(val) val.textContent=`${v}%`;
+}
+async function loadVolume(){
+  try{
+    const d=await (await fetch("/api/volume")).json();
+    if(d.ok!==false && d.volume!=null) _setVolUi(d.volume);
+  }catch(e){}
+}
+async function applyVolume(vol, quiet){
+  if(_volBusy) return;
+  _volBusy=true;
+  _setVolUi(vol);
+  if(!quiet) showToast(null,"Volume…",`${vol}%`);
+  try{
+    const r=await fetch("/api/volume",{method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({volume:vol})});
+    const d=await r.json().catch(()=>({ok:r.ok,msg:r.statusText}));
+    if(!quiet) showToast(d.ok!==false,"Volume",d.msg||`${vol}%`);
+    if(d.ok!==false && d.volume!=null) _setVolUi(d.volume);
+    pollLog();
+  }catch(e){
+    if(!quiet) showToast(false,"Volume",String(e));
+  }finally{ _volBusy=false; }
+}
+async function testVolume(){
+  try{
+    const r=await fetch("/api/volume/test",{method:"POST"});
+    const d=await r.json().catch(()=>({ok:r.ok,msg:r.statusText}));
+    showToast(d.ok!==false,"Volume test",d.message||d.msg||"played");
+    pollLog();
+  }catch(e){ showToast(false,"Volume test",String(e)); }
+}
+(function initVolume(){
+  const sl=$("#volSlider");
+  if(!sl) return;
+  sl.addEventListener("input",()=>{
+    const v=+sl.value;
+    const val=$("#volVal");
+    if(val) val.textContent=`${v}%`;
+  });
+  sl.addEventListener("change",()=>applyVolume(+sl.value, false));
+  $("#btnVolTest")?.addEventListener("click",testVolume);
+})();
+
+async function loadCustomSounds(){
+  try{
+    const d=await (await fetch("/api/sounds")).json();
+    const grid=$("#sound-grid");
+    const hint=$("#soundCustomHint");
+    if(!grid) return;
+    grid.querySelectorAll("[data-custom-sound]").forEach(b=>b.remove());
+    const custom=(d.custom||[]).slice(0,6);
+    custom.forEach(f=>{
+      const b=document.createElement("button");
+      b.type="button";
+      b.className="b snd";
+      b.dataset.customSound="1";
+      b.dataset.sound=f;
+      b.innerHTML=`<span class="ic">🎶</span>${f.replace(/\.wav$/i,"").slice(0,10)}`;
+      grid.appendChild(b);
+    });
+    if(hint) hint.textContent=custom.length
+      ? `${custom.length} custom upload(s) on robot`
+      : "Custom sounds: upload to robot /api/media/sounds later";
+  }catch(e){}
+}
+async function copyLog(){
+  const n=LOG_COPY;
+  let text="";
+  try{
+    const r=await fetch(`/api/log?n=${n}&fmt=text`);
+    text=await r.text();
+  }catch(e){
+    text=_logRows.slice(-n).map(formatLogLine).join("\n");
+  }
+  if(!text.trim()){ showToast(false,"Log empty","nothing to copy"); return; }
+  try{
+    await navigator.clipboard.writeText(text);
+    showToast(true,"Copied",`last ${n} lines → clipboard`);
+  }catch(e){
+    showToast(null,"Select & copy",`Cmd+C from the log box (${n} lines shown)`);
+    const el=document.getElementById("log");
+    const r=document.createRange();
+    r.selectNodeContents(el);
+    const s=window.getSelection();
+    s.removeAllRanges(); s.addRange(r);
+  }
+}
+document.getElementById("logCopy")?.addEventListener("click",copyLog);
+async function takeSnap(){
+  if(busy) return;
+  busy=true; setButtons(true);
+  setSnapMeta({ok:false,msg:"Capturing… wake + photo"}, {force:true});
+  showToast(null,"Peachy…","waking + taking a photo");
+  try{
+    const r=await fetch("/api/snap",{method:"POST"});
+    const d=await r.json().catch(()=>({ok:r.ok,msg:r.statusText}));
+    if(d.ok!==false){
+      showPreviewFrame();
+      setSnapMeta(d);
+      showToast(d.dark?false:true, d.dark?"Very dark":"Say cheese!",
+        d.dark?"raise head pitch or turn on lights":"photo updated below");
+    } else {
+      setSnapMeta(d,{force:true});
+      showToast(false,"Hmm",(d.msg||"").split("\n").pop()||"snap failed");
+    }
+  }catch(e){ showToast(false,"Failed",String(e)); }
+  finally{ busy=false; setButtons(false); poll(); }
+}
+async function takeLiveSnap(){
+  if(busy) return;
+  busy=true; setButtons(true);
+  setSnapMeta({ok:false,msg:"Capturing… one frame"}, {force:true});
+  showToast(null,"Picture…","no wake — one frame");
+  try{
+    const r=await fetch("/api/snap/live",{method:"POST"});
+    if(r.status===409){
+      showToast(false,"Busy","Peachy is busy — try again in a moment");
+      return;
+    }
+    const d=await r.json().catch(()=>({ok:r.ok,msg:r.statusText}));
+    if(d.ok!==false){
+      showPreviewFrame();
+      setSnapMeta(d);
+      showToast(d.dark?false:true, d.dark?"Very dark":"Got it",
+        d.dark?"raise head pitch or turn on lights":"photo updated");
+    } else {
+      setSnapMeta(d,{force:true});
+      showToast(false,"Can't snap",d.msg||"Peachy is sleeping");
+    }
+  }catch(e){ showToast(false,"Failed",String(e)); }
+  finally{ busy=false; setButtons(false); poll(); }
+}
+const slPitch=$("#slPitch"), slRoll=$("#slRoll"), slYaw=$("#slYaw");
+let _headMoveT=null;
+let liveOn=false, livePaused=false, previewTimer=null;
+const PREVIEW_KEYS={fps:"peachy_preview_fps",q:"peachy_preview_quality",
+  scale:"peachy_preview_scale",mode:"peachy_preview_mode"};
+let previewFps=+(localStorage.getItem(PREVIEW_KEYS.fps)||"1");
+let previewQuality=+(localStorage.getItem(PREVIEW_KEYS.q)||"45");
+let previewScale=+(localStorage.getItem(PREVIEW_KEYS.scale)||"0.5");
+let previewMode=localStorage.getItem(PREVIEW_KEYS.mode)||"stream";
+function previewIntervalSec(){ return 1/Math.max(0.25,previewFps); }
+function previewStartQuery(){
+  const p=new URLSearchParams({
+    interval_s:String(previewIntervalSec()),
+    quality:String(previewQuality),
+    scale:String(previewScale),
+    mode:previewMode,
+  });
+  return p.toString();
+}
+function bindPreviewSetting(el,key,read,write){
+  if(!el) return;
+  el.value=String(read());
+  el.addEventListener("change",async()=>{
+    write(el.value);
+    localStorage.setItem(key,String(read()));
+    updateLiveBtnLabel();
+    if(liveOn){ await stopLive(); await startLive(); }
+  });
+}
+bindPreviewSetting($("#previewFps"),PREVIEW_KEYS.fps,
+  ()=>previewFps,v=>{previewFps=+v||1;});
+bindPreviewSetting($("#previewQuality"),PREVIEW_KEYS.q,
+  ()=>previewQuality,v=>{previewQuality=+v||45;});
+bindPreviewSetting($("#previewScale"),PREVIEW_KEYS.scale,
+  ()=>previewScale,v=>{previewScale=+v||0.5;});
+bindPreviewSetting($("#previewMode"),PREVIEW_KEYS.mode,
+  ()=>previewMode,v=>{previewMode=v==="motion"?"motion":"stream";});
+function updateLiveBtnLabel(){
+  const b=$("#btnLive");
+  if(!b) return;
+  if(liveOn) b.textContent="■ Live on";
+  else b.innerHTML=`<span class="ic">▶</span>Live ${previewFps}/s`;
+}
+function parseIso(iso){
+  if(!iso) return null;
+  let s=String(iso).replace(" ","T");
+  if(!/[Zz]|[+-]\d{2}:?\d{2}$/.test(s)) s+="Z";
+  const d=new Date(s);
+  return Number.isNaN(d.getTime())?null:d;
+}
+function fmtWhen(iso){
+  const d=parseIso(iso);
+  if(!d) return iso?String(iso):"";
+  return d.toLocaleString(undefined,{month:"short",day:"numeric",
+    hour:"numeric",minute:"2-digit",second:"2-digit",hour12:true});
+}
+function enrichSnapPayload(d){
+  // Server sends frame_ts + pulled_at in UTC — never stamp "now" on failure.
+  return d;
+}
+function snapMetaAge(d){
+  if(!d||d.ok===false) return d;
+  const ts=d.frame_ts||d.pulled_at;
+  if(!ts) return d;
+  const t=parseIso(ts);
+  if(!t) return d;
+  return {...d, frame_age_s:Math.round((Date.now()-t.getTime())/1000)};
+}
+function snapMetaHtml(d){
+  if(!d||d.ok===false){
+    const msg=d?.msg||"no frame";
+    return `<span class="when">${msg}</span>`;
+  }
+  d=snapMetaAge(d);
+  const when=fmtWhen(d.frame_ts||d.pulled_at);
+  const parts=[];
+  if(d.frame_age_s!=null){
+    parts.push(`age ${d.frame_age_s}s`);
+    if(d.frame_age_s>30) parts.unshift("⚠ stale");
+  }
+  if(d.bytes_kb!=null) parts.push(`${d.bytes_kb} KB`);
+  if(d.pull_ms!=null) parts.push(`${d.pull_ms} ms`);
+  if(d.via) parts.push(d.via);
+  const detail=parts.join(" · ");
+  return `<span class="when">${when||"—"}</span>`
+    +(detail?`<span class="detail">${detail}</span>`:"");
+}
+let _lastSnapMeta=null;
+
+function setSnapMeta(d, opts={}){
+  const el=$("#snapMeta");
+  if(!el) return;
+  const hasImg=$("#snap")?.classList.contains("show");
+  if(d&&d.ok!==false){
+    _lastSnapMeta={...d};
+  }else if(hasImg&&_lastSnapMeta&&!opts.force){
+    d=snapMetaAge(_lastSnapMeta);
+  }
+  el.innerHTML=snapMetaHtml(d);
+  el.classList.toggle("stale",d&&d.ok!==false&&d.frame_age_s!=null&&d.frame_age_s>8);
+  el.classList.toggle("err",d&&d.ok===false&&!hasImg);
+  el.classList.toggle("dark",!!(d&&d.dark));
+}
+
+function headPoseFromSliders(){
+  return {pitch_deg:+slPitch.value, roll_deg:+slRoll.value, yaw_deg:+slYaw.value};
+}
+function updateHeadLabels(){
+  $("#vPitch").textContent=slPitch.value+"°";
+  $("#vRoll").textContent=slRoll.value+"°";
+  $("#vYaw").textContent=slYaw.value+"°";
+}
+function setSlidersFromDeg(d){
+  if(d.pitch!=null) slPitch.value=d.pitch;
+  if(d.roll!=null) slRoll.value=d.roll;
+  if(d.yaw!=null) slYaw.value=d.yaw;
+  updateHeadLabels();
+}
+function nudgeHead(spec){
+  const [axis,delta]=spec.split(",");
+  const sl={pitch:slPitch,roll:slRoll,yaw:slYaw}[axis];
+  if(!sl) return;
+  sl.value=Math.min(+sl.max, Math.max(+sl.min, +sl.value + +delta));
+  updateHeadLabels();
+  queueHeadMove();
+}
+function queueHeadMove(){
+  updateHeadLabels();
+  clearTimeout(_headMoveT);
+  _headMoveT=setTimeout(()=>headAction("move",true), 280);
+}
+async function loadHead(){
+  try{
+    const d=await (await fetch("/api/head")).json();
+    setSlidersFromDeg(d.offset_deg||{});
+    const live=d.live_deg||{};
+    $("#headReadout").textContent=
+      `saved: P${d.offset_deg?.pitch??0}° R${d.offset_deg?.roll??0}° Y${d.offset_deg?.yaw??0}°`
+      + (d.saved_at?` (${d.saved_at})`:"")
+      + `\nlive:  P${live.pitch??"?"}° R${live.roll??"?"}° Y${live.yaw??"?"}°`;
+  }catch(e){
+    $("#headReadout").textContent="head API unavailable";
+  }
+}
+function showPreviewFrame(){
+  const img=$("#snap");
+  img.src="/static/snap.jpg?t="+Date.now();
+  img.classList.add("show");
+}
+async function pullPreview(){
+  try{
+    const r=await fetch("/api/preview/pull",{method:"POST"});
+    const d=await r.json().catch(()=>({ok:r.ok}));
+    if(d.ok!==false){
+      showPreviewFrame();
+      setSnapMeta(d);
+    }else{
+      setSnapMeta(d,{force:true});
+    }
+    const st=$("#previewStatus");
+    if(st) st.textContent=livePaused?"paused":(liveOn?
+      `live ${previewFps}/s q${previewQuality} ${Math.round(previewScale*100)}% ${previewMode} · ${d.msg||"ok"}`:
+      "preview off");
+    return d;
+  }catch(e){ setSnapMeta({ok:false,msg:String(e)}); return {ok:false}; }
+}
+function schedulePreviewPull(){
+  clearInterval(previewTimer);
+  if(!liveOn||livePaused) return;
+  const ms=Math.max(400, Math.round(1000/previewFps));
+  previewTimer=setInterval(()=>{ if(!busy) pullPreview(); }, ms);
+}
+async function startLive(){
+  if(liveOn) return;
+  const iv=previewIntervalSec();
+  showToast(null,"Preview…",`starting ~${previewFps}/s on robot`);
+  try{
+    const r=await fetch(`/api/preview/start?${previewStartQuery()}`,{method:"POST"});
+    const d=await r.json().catch(()=>({ok:r.ok}));
+    if(d.ok===false){ showToast(false,"Preview",d.msg||"failed"); return; }
+    liveOn=true; livePaused=false;
+    $("#btnPause").disabled=false;
+    updateLiveBtnLabel();
+    schedulePreviewPull();
+    await pullPreview();
+    const hint=previewMode==="motion"?"updates on motion only":"stream";
+    showToast(true,"Live",`~${previewFps}/s ${hint} — see timestamp below`);
+  }catch(e){ showToast(false,"Preview",String(e)); }
+}
+async function stopLive(){
+  liveOn=false; livePaused=false;
+  clearInterval(previewTimer);
+  $("#btnPause").disabled=true;
+  updateLiveBtnLabel();
+  try{ await fetch("/api/preview/stop",{method:"POST"}); }catch(e){}
+  const st=$("#previewStatus");
+  if(st) st.textContent="preview stopped";
+  if(_lastSnapMeta) setSnapMeta(snapMetaAge(_lastSnapMeta));
+}
+async function headAction(cmd, quiet){
+  if(cmd==="reload"){ await loadHead(); showToast(true,"Reloaded","saved offsets"); return; }
+  if(cmd==="live"){ if(liveOn) await stopLive(); else await startLive(); return; }
+  if(cmd==="pause"){ livePaused=!livePaused; $("#btnPause").innerHTML=
+    livePaused?'<span class="ic">▶</span>Resume':'<span class="ic">⏸</span>Pause';
+    schedulePreviewPull(); if(!livePaused) pullPreview(); return; }
+  if(cmd==="snap"){ await pullPreview(); return; }
+  if(cmd==="wake"){ await act("/api/do/wake","Wake"); await loadHead(); return; }
+  if(cmd==="capture"){
+    if(busy) return;
+    busy=true; setButtons(true); showToast(null,"Capture…","reading live pose");
+    try{
+      const r=await fetch("/api/head/capture",{method:"POST"});
+      const d=await r.json().catch(()=>({ok:r.ok,msg:r.statusText}));
+      showToast(d.ok!==false,"Captured",d.msg||"saved as head home");
+      if(d.ok!==false) await loadHead();
+    }catch(e){ showToast(false,"Failed",String(e)); }
+    finally{ busy=false; setButtons(false); poll(); }
+    return;
+  }
+  if(busy) return;
+  busy=true; setButtons(true);
+  if(!quiet) showToast(null,"Head…",cmd);
+  try{
+    const body=headPoseFromSliders();
+    const url=cmd==="save"?"/api/head/save":cmd==="zero"?"/api/head/zero":"/api/head/move";
+    const r=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify(body)});
+    const d=await r.json().catch(()=>({ok:r.ok,msg:r.statusText}));
+    if(!quiet || d.ok===false)
+      showToast(d.ok!==false,"Head",d.msg||cmd);
+    if(cmd==="zero") setSlidersFromDeg({pitch:0,roll:0,yaw:0});
+    if(cmd==="save"||cmd==="zero") await loadHead();
+    if(liveOn&&!livePaused&&(cmd==="move"||cmd==="zero"))
+      setTimeout(()=>pullPreview(), 400);
+    pollLog();
+  }catch(e){ showToast(false,"Head failed",String(e)); }
+  finally{ busy=false; setButtons(false); poll(); }
+}
+[slPitch,slRoll,slYaw].forEach(sl=>sl?.addEventListener("input",queueHeadMove));
+
+window.addEventListener("beforeunload",()=>{ if(liveOn) fetch("/api/preview/stop",{method:"POST"}); });
+
+// ---- BODY YAW ----
+const slBodyYaw=$("#slBodyYaw");
+let _bodyMoveT=null;
+async function loadBody(){
+  try{
+    const d=await (await fetch("/api/body")).json();
+    if(d.ok!==false){
+      if(slBodyYaw) slBodyYaw.value=String(d.yaw_deg);
+      const vb=$("#vBodyYaw"); if(vb) vb.textContent=d.yaw_deg+"°";
+      const br=$("#bodyReadout");
+      if(br) br.textContent=`commanded: ${d.yaw_deg>0?"+":""}${d.yaw_deg}°  |  measured: ${d.present_deg>0?"+":""}${d.present_deg}°`;
+    }
+  }catch(e){
+    const br=$("#bodyReadout"); if(br) br.textContent="body yaw unavailable";
+  }
+}
+function updateBodyLabel(){
+  const vb=$("#vBodyYaw"); if(vb&&slBodyYaw) vb.textContent=slBodyYaw.value+"°";
+}
+async function moveBodyYaw(deg,dur=0.8){
+  if(busy) return;
+  busy=true; setButtons(true);
+  const label=`body → ${deg>0?"+":""}${deg}°`;
+  showToast(null,"Turning…",label);
+  try{
+    const r=await fetch("/api/body/yaw",{method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({yaw_deg:deg,duration:dur})});
+    if(r.status===409){ showToast(false,"Busy","Peachy is busy — wait a sec"); return; }
+    const d=await r.json().catch(()=>({ok:r.ok,msg:r.statusText}));
+    showToast(d.ok!==false,d.ok!==false?"Turned":"Hmm",d.msg||label);
+    if(slBodyYaw) slBodyYaw.value=String(deg);
+    updateBodyLabel();
+    pollLog();
+    if(liveOn&&!livePaused) setTimeout(()=>pullPreview(),700);
+  }catch(e){ showToast(false,"Body yaw failed",String(e)); }
+  finally{ busy=false; setButtons(false); poll(); }
+}
+function queueBodyMove(){
+  updateBodyLabel();
+  clearTimeout(_bodyMoveT);
+  _bodyMoveT=setTimeout(()=>moveBodyYaw(+(slBodyYaw?.value||0),0.6),350);
+}
+slBodyYaw?.addEventListener("input",queueBodyMove);
+document.addEventListener("click",e=>{
+  const b=e.target.closest("button.b"); if(!b||b.disabled) return;
+  if(b.dataset.bodyNudge!=null){
+    if(slBodyYaw){
+      slBodyYaw.value=String(Math.min(160,Math.max(-160,+(slBodyYaw.value)+(+b.dataset.bodyNudge))));
+      queueBodyMove();
+    }
+  }
+  if(b.dataset.bodyPreset!=null) moveBodyYaw(+b.dataset.bodyPreset);
+  if(b.id==="btnBodyDiag") runBodyDiag();
+  if(b.id==="btnBodyRead") loadBody();
+});
+async function runBodyDiag(){
+  if(busy) return;
+  busy=true; setButtons(true);
+  showToast(null,"Diag…","running body-yaw test (~15s)");
+  const hint=$("#bodyHint");
+  if(hint) hint.textContent="Running… moves ±17° testing both head and body servo";
+  try{
+    const r=await fetch("/api/body/diag",{method:"POST"});
+    const d=await r.json().catch(()=>({ok:r.ok,msg:r.statusText}));
+    const lines=(d.msg||"").trim().split("\n");
+    const verdict=lines.find(l=>l.includes("TRACKS")||l.includes("NO RESPONSE")||l.includes("MECHANICAL")||l.includes("ELECTRICAL"))||lines.slice(-2).join(" ");
+    if(hint) hint.textContent=verdict||d.msg||"done";
+    showToast(d.ok!==false,d.ok!==false?"Diag done":"Diag issue",verdict||lines.pop()||"see log");
+    pollLog(); loadBody();
+  }catch(e){ showToast(false,"Diag failed",String(e)); }
+  finally{ busy=false; setButtons(false); poll(); }
+}
+const bodyFold=$("#bodyYawFold");
+if(bodyFold){
+  const k="peachy_body_yaw_open";
+  bodyFold.open=localStorage.getItem(k)==="1";
+  bodyFold.addEventListener("toggle",()=>{
+    localStorage.setItem(k,bodyFold.open?"1":"0");
+    if(bodyFold.open) loadBody();
+  });
+}
+updateLiveBtnLabel();
+const headFold=$("#headTuneFold");
+if(headFold){
+  const k="peachy_head_tune_open";
+  headFold.open=localStorage.getItem(k)==="1";
+  headFold.addEventListener("toggle",()=>{
+    localStorage.setItem(k, headFold.open?"1":"0");
+  });
+}
+loadHead();
+loadVolume();
+loadCustomSounds();
+loadTurretSounds();
+loadDeckQr();
+poll(); setInterval(poll,2500);
+pollLog(); setInterval(pollLog,2500);
+</script>
+<script src="/static/nav.js"></script>
+</body>
+</html>

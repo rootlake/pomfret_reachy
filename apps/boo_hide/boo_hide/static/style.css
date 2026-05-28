@@ -1,0 +1,37 @@
+body {
+    font-family: sans-serif;
+    margin: 24px;
+}
+
+#controls button {
+    padding: 10px 20px;
+    border: none;
+    color: white;
+    cursor: pointer;
+    font-size: 16px;
+    border-radius: 6px;
+}
+
+#boo-btn {
+    background-color: #3498db;
+}
+
+#wake-btn {
+    background-color: #27ae60;
+}
+
+.hint {
+    max-width: 36rem;
+    line-height: 1.45;
+}
+
+#status {
+    margin-top: 16px;
+    font-weight: bold;
+}
+
+#controls {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}

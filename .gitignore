@@ -1,0 +1,42 @@
+# --- runtime state & SECRETS (never commit) ---
+/.run/
+.run/**
+reachSSH-ifconfig.txt
+agents.local.md
+.claude/
+
+# --- environment / build artifacts ---
+reachy_mini_env/            # venv — recreate with requirements-student.txt
+*.pyc
+__pycache__/
+*.egg-info/
+build/
+dist/
+.DS_Store
+
+# --- teacher-only / not for student repo ---
+glados_fork/
+/configs/
+NEXT.md
+ChatGPT-suggest.md
+Claude-suggest.md
+Gemini-suggest.md
+
+# --- generated bundles & large assets ---
+peachy-student.zip
+*.psd
+peachy-logo.pdf
+peachyLogo
+peachyLogo.psd
+
+# --- teacher deploy / infrastructure (optional remote access) ---
+scripts/net-uplink.sh
+scripts/net-deploy.sh
+scripts/v0*-deploy.sh
+scripts/v02-deploy.sh
+scripts/v03-deploy.sh
+scripts/v04-deploy.sh
+scripts/peachy-*.py
+scripts/peachy-*.sh
+scripts/reachy-mcp-server.py
+scripts/systemd/

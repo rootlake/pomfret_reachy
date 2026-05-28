@@ -1,0 +1,229 @@
+#!/usr/bin/env bash
+# Peachy control deck — interactive entry point.
+# Auto-sources the venv and wraps the most-used scripts with verbose feedback.
+# Skips redundant/legacy/stale scripts (ctl-wake, diag-sim/wired/audio,
+# cal-light, app-run-conversation) — see TOOLKIT.md if you need them.
+set -u
+ROOT="$(cd "$(dirname "$0")" && pwd)"
+cd "$ROOT"
+
+# venv autoload (no-op if already active)
+if [ -z "${VIRTUAL_ENV:-}" ] && [ -f reachy_mini_env/bin/activate ]; then
+  # shellcheck source=/dev/null
+  source reachy_mini_env/bin/activate
+fi
+
+# colors (best-effort, no-op if tput missing)
+if command -v tput >/dev/null 2>&1; then
+  B="$(tput bold)"; D="$(tput dim)"; G="$(tput setaf 2)"; Y="$(tput setaf 3)"
+  R="$(tput setaf 1)"; C="$(tput setaf 6)"; M="$(tput setaf 5)"; N="$(tput sgr0)"
+else B=""; D=""; G=""; Y=""; R=""; C=""; M=""; N=""; fi
+
+bar() { printf '%s──────────────────────────────────────────────%s\n' "$D" "$N"; }
+say() { printf '%s%s%s\n' "$C" "$*" "$N"; }
+warn() { printf '%s%s%s\n' "$Y" "$*" "$N"; }
+ok()   { printf '%s✓ %s%s\n' "$G" "$*" "$N"; }
+err()  { printf '%s✗ %s%s\n' "$R" "$*" "$N"; }
+hdr()  { printf '\n%s%s%s\n' "$B" "$*" "$N"; }
+pause(){ printf '\n%spress Enter to return to menu…%s ' "$D" "$N"; read -r _; }
+
+run() {  # run "<label>" cmd args...
+  local label="$1"; shift
+  bar; say "→ $label"; say "$D$ $*$N"; bar
+  if "$@"; then bar; ok "$label — done"; else bar; err "$label — failed (exit $?)"; fi
+}
+
+confirm() { printf '%s%s [y/N]:%s ' "$Y" "$*" "$N"; read -r a; [[ "$a" =~ ^[Yy]$ ]]; }
+
+# ─── action wrappers ──────────────────────────────────────────────────────
+
+a_status() {
+  run "Find Peachy on the network" ./scripts/net-connect.sh
+  run "Read robot status (pose, state, control_mode)" python scripts/ctl-toggle.py status
+}
+
+a_wake()    { run "Wake Peachy (head up)" python scripts/ctl-toggle.py wake; }
+a_sleep()   { run "Sleep Peachy (head down)" python scripts/ctl-toggle.py sleep; }
+a_toggle()  { run "Toggle sleep ↔ wake (state-aware)" python scripts/ctl-toggle.py toggle; }
+
+a_express() {
+  local opts=(yes no curious lookaround excited shy stretch)
+  hdr "Expression"
+  local i=1; for e in "${opts[@]}"; do printf "  %2d) %s\n" "$i" "$e"; i=$((i+1)); done
+  printf "  %sb) back%s\n  > " "$D" "$N"; read -r sel
+  [[ "$sel" == "b" || -z "$sel" ]] && return
+  if [[ "$sel" =~ ^[0-9]+$ ]] && (( sel >= 1 && sel <= ${#opts[@]} )); then
+    run "Expression: ${opts[$((sel-1))]}" python scripts/ctl-express.py express "${opts[$((sel-1))]}"
+  else warn "no such option"; fi
+}
+
+a_snap_local()  {
+  local out="${ROOT}/.run/peachy_snap.jpg"
+  warn "Snaps run ON the robot (SDK camera is localhost-only — WebRTC from the"
+  warn "laptop times out behind Fortinet). I'll ssh in, snap there, pull JPG back."
+  warn "This will WAKE the robot, take one frame, and open the JPG locally."
+  confirm "Take a snapshot now?" || { warn "skipped"; return; }
+  mkdir -p "${ROOT}/.run"
+  run "Snap on robot → /tmp/peachy_snap.jpg" \
+      ssh -t pollen@reachy-mini.local \
+        '/venvs/apps_venv/bin/python ~/peachy/scripts/cam-snap.py --out /tmp/peachy_snap.jpg'
+  if scp -q pollen@reachy-mini.local:/tmp/peachy_snap.jpg "$out" 2>/dev/null; then
+    ok "saved → $(echo "$out" | sed "s|${ROOT}/||")"
+    command -v open >/dev/null 2>&1 && open "$out"
+  else
+    err "couldn't pull the JPG back from the robot (snap may have failed above)"
+  fi
+}
+
+a_calibrate() {
+  warn "Calibration MOVES the robot through wake → sleep to record real poses."
+  confirm "Run calibration now?" || { warn "skipped"; return; }
+  run "Calibrate sleep/wake poses" python scripts/ctl-toggle.py calibrate
+}
+
+a_head_jog() {
+  warn "Interactive head-jog REPL: type 'deg' first, then 'r/p/y N' to nudge,"
+  warn "'ant N' to raise the antenna plumb line, 'save' to persist, 'q' to quit."
+  warn "You MUST type 'save' before 'q' for the offset to stick."
+  confirm "Launch the head-jog REPL?" || { warn "skipped"; return; }
+  python scripts/cal-head.py --from-saved
+}
+
+a_watch_dry() { run "Room watch — DRY RUN (sensors only, no movement)" python scripts/watch-room.py --dry-run; }
+a_watch_live(){
+  warn "Live room watch: robot will actually move on state transitions."
+  warn "Ctrl+C to stop. Needs calibration done (see option 7)."
+  confirm "Start live room watch?" || { warn "skipped"; return; }
+  python scripts/watch-room.py
+}
+
+a_convo_start() { run "Wake + start conversation app" scripts/app-conversation.sh start; }
+a_convo_stop()  { run "Stop conversation app + sleep" scripts/app-conversation.sh stop && python scripts/ctl-toggle.py sleep; }
+
+a_qr()      { run "Phone-dashboard QR code" python scripts/tool-qr.py; }
+
+a_verify_remote() {
+  local fqdn="100.88.209.10" port="8080"
+  local tok="$(cat .run/peachy_token 2>/dev/null)"
+  if [ -z "$tok" ]; then warn "no .run/peachy_token (deploy the dashboard first)"; return; fi
+  say "→ curl through the tunnel (home/cell → VPS → Peachy)…"
+  if out=$(curl -sf -m6 -H "X-Peachy-Token: $tok" "http://${fqdn}:${port}/api/status" 2>&1); then
+    ok "tunnel reachable from this host"; printf '  %s\n' "$out" | head -c 300; echo
+    say "  Dashboard URL:  ${B}http://${fqdn}:${port}/?k=${tok}${N}"
+  else
+    err "tunnel unreachable from this host"
+    warn "Are you on Tailscale? Is peachy-uplink.service running on Peachy?"
+    printf '  %s\n' "$out"
+  fi
+}
+
+a_deploy_dashboard() {
+  warn "Pushes dashboard+scripts to the robot, restarts the service."
+  warn "Needs Peachy reachable (LAN/SSH) and you'll be asked for Peachy's sudo pw."
+  confirm "Run net-deploy now?" || { warn "skipped"; return; }
+  run "Deploy/refresh dashboard on robot" ./scripts/net-deploy.sh
+}
+
+a_deploy_uplink() {
+  warn "Installs the autossh reverse tunnel to your VPS (dashboard:8080 + ssh:22)."
+  warn "Needs Peachy reachable; Peachy sudo pw prompt; you must paste Peachy's"
+  warn "pubkey into VPS ~/.ssh/authorized_keys after."
+  confirm "Run net-uplink now?" || { warn "skipped"; return; }
+  run "Setup/refresh remote uplink" ./scripts/net-uplink.sh
+}
+
+a_refresh_at_school() {
+  hdr "At-school refresh — restart dashboard + redeploy uplink + restart uplink"
+  warn "Run this when you're on the school LAN with Peachy reachable."
+  warn "You'll be prompted for Peachy's sudo password once or twice."
+  confirm "Proceed?" || { warn "skipped"; return; }
+  run "Restart peachy-dashboard (pick up new server.py)" \
+      ssh -t pollen@reachy-mini.local 'sudo systemctl restart peachy-dashboard'
+  run "Push uplink service (adds SSH-22 forward)" ./scripts/net-uplink.sh
+  run "Restart peachy-uplink (pick up new unit)" \
+      ssh -t pollen@reachy-mini.local 'sudo systemctl restart peachy-uplink'
+  ok "After this: dashboard works via tunnel + 'ssh -p 2222 pollen@100.88.209.10' from anywhere."
+}
+
+a_diag_yaw() {
+  warn "Body-yaw diagnostic: small moves on head + body yaw, reads encoders."
+  confirm "Run yaw probe?" || { warn "skipped"; return; }
+  run "Body-yaw mechanical/electrical diagnostic" python scripts/diag-yaw.py
+}
+
+a_fan() {
+  hdr "Fan tuning"
+  printf "  1) Status (temp, fan state, trips)\n"
+  printf "  2) Watch  (live temp+state, 30s)\n"
+  printf "  3) Restore  (45°C default — fan off at idle, quietest)\n"
+  printf "  4) Lock-trip  (lower trip — fan runs MORE, usually louder)\n"
+  printf "  %sb) back%s\n  > " "$D" "$N"; read -r s
+  case "$s" in
+    1) run "Fan status" ./scripts/tool-fan.sh status ;;
+    2) run "Fan watch 30s" ./scripts/tool-fan.sh watch 30 ;;
+    3) run "Fan restore" ./scripts/tool-fan.sh restore ;;
+    4) run "Fan lock-trip" ./scripts/tool-fan.sh lock-trip ;;
+    b|"") return ;;
+    *) warn "no such option" ;;
+  esac
+}
+
+# ─── main menu loop ───────────────────────────────────────────────────────
+
+menu() {
+  printf '\n%s  P E A C H Y   C O N T R O L   D E C K  %s\n' "$B$M" "$N"
+  bar
+  printf '  %sSTATUS%s\n' "$B" "$N"
+  printf '   1) Connection check + robot status\n'
+  printf '  %sCONTROL%s\n' "$B" "$N"
+  printf '   2) Wake          3) Sleep          4) Toggle (smart)\n'
+  printf '   5) Expression…\n'
+  printf '  %sBEHAVIOR%s\n' "$B" "$N"
+  printf '   6) Room watch — dry-run (safe, no movement)\n'
+  printf '   7) Room watch — LIVE  (the dream)\n'
+  printf '  %sCAMERA / TUNING%s\n' "$B" "$N"
+  printf '   8) Take a photo (how-to, runs on robot)\n'
+  printf '   9) Calibrate sleep/wake poses  (moves robot)\n'
+  printf '  10) Center head — interactive jog (must "save")\n'
+  printf '  %sCONVERSATION APP%s\n' "$B" "$N"
+  printf '  11) Wake + start conversation     12) Stop conversation + sleep\n'
+  printf '  %sREMOTE ACCESS%s\n' "$B" "$N"
+  printf '  13) Phone QR for dashboard       14) Verify remote tunnel (curl)\n'
+  printf '  15) Deploy/refresh dashboard      16) Setup/refresh uplink\n'
+  printf '  17) %sAt-school refresh combo%s (15+16+restart)\n' "$C" "$N"
+  printf '  %sADVANCED%s\n' "$B" "$N"
+  printf '  18) Body-yaw diagnostic\n'
+  printf '  19) Fan tuning  (silence the on/off whine)\n\n'
+  printf '   q) Quit\n'
+  bar
+  printf '  > '
+}
+
+while true; do
+  menu
+  read -r choice || break
+  case "$choice" in
+    1) a_status ;;
+    2) a_wake ;;
+    3) a_sleep ;;
+    4) a_toggle ;;
+    5) a_express ;;
+    6) a_watch_dry ;;
+    7) a_watch_live ;;
+    8) a_snap_local ;;
+    9) a_calibrate ;;
+    10) a_head_jog ;;
+    11) a_convo_start ;;
+    12) a_convo_stop ;;
+    13) a_qr ;;
+    14) a_verify_remote ;;
+    15) a_deploy_dashboard ;;
+    16) a_deploy_uplink ;;
+    17) a_refresh_at_school ;;
+    18) a_diag_yaw ;;
+    19) a_fan ;;
+    q|Q|"") echo; ok "bye"; exit 0 ;;
+    *) warn "no such option: $choice" ;;
+  esac
+  pause
+done

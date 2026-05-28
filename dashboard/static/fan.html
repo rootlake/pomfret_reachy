@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#FF8A5B">
+<title>Peachy Fan Monitor</title>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=DM+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --cream:#FFF1E0; --ink:#34203F; --peach:#FF8A5B; --coral:#FF5C8A;
+    --mint:#28D9A0; --amber:#FFC247; --mono:"DM Mono",ui-monospace,monospace;
+    --disp:"Baloo 2",ui-rounded,system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:var(--disp);background:var(--cream);color:var(--ink);
+    min-height:100dvh;padding:16px 14px 40px}
+  header{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
+  h1{font-size:22px;font-weight:800}
+  a.back{font-family:var(--mono);font-size:11px;color:var(--peach);text-decoration:none;
+    border:2px solid var(--ink);padding:4px 10px;border-radius:999px;background:#fff}
+  .panel{background:#fff;border:2px solid var(--ink);border-radius:14px;
+    box-shadow:3px 3px 0 var(--ink);padding:14px;margin-bottom:12px}
+  .big{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .stat{background:var(--cream);border:2px solid var(--ink);border-radius:10px;padding:10px}
+  .stat .lbl{font-family:var(--mono);font-size:9px;text-transform:uppercase;color:#8a7791}
+  .stat .val{font-size:26px;font-weight:800;line-height:1.1;margin-top:2px}
+  .stat .sub{font-family:var(--mono);font-size:10px;color:#8a7791;margin-top:2px}
+  .warn{background:#FFF0F3;border-color:var(--coral);color:#8a2040}
+  .ok{background:#EBFFF8;border-color:var(--mint)}
+  canvas{width:100%;height:100px;border:2px solid var(--ink);border-radius:8px;background:#fff}
+  .hint{font-family:var(--mono);font-size:10px;line-height:1.45;color:#8a7791;margin:8px 0}
+  .btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+  button{font-family:var(--disp);font-weight:700;font-size:13px;border:2px solid var(--ink);
+    border-radius:10px;padding:10px 14px;cursor:pointer;box-shadow:2px 2px 0 var(--ink)}
+  button:active{transform:translate(1px,1px);box-shadow:1px 1px 0 var(--ink)}
+  button.primary{background:var(--mint)}
+  button.secondary{background:#fff}
+  #log{font-family:var(--mono);font-size:10px;max-height:140px;overflow:auto;
+    line-height:1.5;white-space:pre-wrap}
+  .pulse{animation:pulse 1.2s ease-in-out infinite}
+  @keyframes pulse{50%{opacity:.55}}
+</style>
+<link rel="stylesheet" href="/static/nav.css">
+</head>
+<body>
+<div id="peachyNav"></div>
+<header style="margin-bottom:14px">
+  <h1>🌀 Fan monitor</h1>
+</header>
+
+<div class="panel" id="alertPanel">
+  <p class="hint" id="alertTxt">Loading…</p>
+</div>
+
+<div class="panel">
+  <div class="big">
+    <div class="stat" id="stTemp"><span class="lbl">CPU temp</span><div class="val" id="vTemp">—</div></div>
+    <div class="stat" id="stPwm"><span class="lbl">Fan PWM</span><div class="val" id="vPwm">—</div>
+      <div class="sub" id="vState">state —</div></div>
+    <div class="stat"><span class="lbl">Trip 1 (oscillation)</span><div class="val" id="vTrip">—</div>
+      <div class="sub" id="vSvc">service —</div></div>
+    <div class="stat"><span class="lbl">Spikes (2 min)</span><div class="val" id="vSpikes">—</div>
+      <div class="sub">PWM jumps ≥20</div></div>
+  </div>
+  <p class="hint" style="margin-top:10px">
+    Idle Peachy often sits <b>44–45°C</b> — right on the factory 45°C trip, so the fan
+    pulses (rhythmic whine). <b>Fix cusp (46°C)</b> raises the trip so the fan stays off
+    at idle. Alternative: 44°C keeps the fan on steadily (louder, no pulsing).
+  </p>
+  <canvas id="chart" width="600" height="100" aria-label="PWM history"></canvas>
+  <div class="btns">
+    <button class="primary" id="btnCalm">Fix cusp (46°C) — recommended</button>
+    <button class="secondary" id="btnRestore">Restore factory (45°C)</button>
+    <button class="secondary" id="btnAntiPulse" title="Fan stays on — louder than calm">Steady-on (44°C)</button>
+    <button class="secondary" id="btnRefresh">Refresh</button>
+  </div>
+</div>
+
+<div class="panel">
+  <span class="lbl" style="font-family:var(--mono);font-size:9px;text-transform:uppercase;color:#8a7791">Live log</span>
+  <div id="log"></div>
+</div>
+
+<script>
+const $=s=>document.querySelector(s);
+const logEl=$("#log");
+const CHART_SLOTS=90; // fixed 3 min window at 2s — newest on the right
+const pwmRing=[];
+function addLog(line){
+  const d=document.createElement("div");
+  d.textContent=line;
+  logEl.prepend(d);
+  while(logEl.childElementCount>24) logEl.lastChild.remove();
+}
+async function poll(){
+  try{
+    const d=await (await fetch("/api/fan")).json();
+    if(!d.ok && d.ok!==undefined){ addLog("ERR "+(d.msg||"read failed")); return; }
+    if(d.pwm!=null){
+      pwmRing.push(+d.pwm);
+      while(pwmRing.length>CHART_SLOTS) pwmRing.shift();
+    }
+    $("#vTemp").textContent=(d.temp_c!=null?d.temp_c+"°C":"—");
+    $("#vPwm").textContent=(d.pwm!=null?d.pwm+"/255 ("+(d.pwm_pct||"?")+"%)":"—");
+    $("#vState").textContent=`state ${d.fan_state}/${d.fan_max} (${d.fan_pct||"?"}%)`;
+    $("#vTrip").textContent=(d.trip_1_c!=null?d.trip_1_c+"°C":"—");
+    $("#vSvc").textContent="peachy-fan: "+(d.peachy_fan_service||"?");
+    $("#vSpikes").textContent=String(d.pwm_spikes??0);
+    const ap=$("#alertPanel"), at=$("#alertTxt");
+    if(d.calm_at_trip){
+      ap.className="panel ok";
+      at.textContent="Calm 46°C — fan off at idle (~"+d.temp_c+"°C). No cusp pulsing.";
+    }else if(d.quiet_at_default && d.cusp_risk){
+      ap.className="panel warn";
+      at.innerHTML="<b>Cusp pulsing risk</b> — temp "+d.temp_c+"°C is at trip₁ "+d.trip_1_c+"°C. "
+        +"<b>Fix cusp (46°C)</b> stops the rhythmic whine.";
+    }else if(d.quiet_at_default){
+      ap.className="panel ok";
+      at.textContent="Factory 45°C — OK if idle stays below ~44°C.";
+    }else if(d.trip_lowered || d.trip_too_low){
+      ap.className="panel warn";
+      at.innerHTML="<b>Trip lowered to "+d.trip_1_c+"°C</b> — fan runs harder (pwm="+d.pwm+"). "
+        +"<b>Restore default (45°C)</b>.";
+    }else if(d.recommend_anti_pulse){
+      ap.className="panel";
+      at.textContent="Fan pulsing — try Fix cusp (46°C) first; 44°C is louder but steady.";
+    }else if(d.fan_on){
+      ap.className="panel";
+      at.textContent="Fan running (temp="+d.temp_c+"°C) — normal under load.";
+    }else{
+      ap.className="panel";
+      at.textContent="Monitoring… temp="+d.temp_c+"°C, trip₁="+d.trip_1_c+"°C";
+    }
+    drawChart();
+    addLog(`${d.t||"?"}  temp=${d.temp_c}°C  pwm=${d.pwm}  trip₁=${d.trip_1_c}°C  spikes=${d.pwm_spikes}`);
+  }catch(e){ addLog("poll failed: "+e); }
+}
+function drawChart(){
+  const c=$("#chart"), ctx=c.getContext("2d");
+  const w=c.width, h=c.height, pad=4;
+  ctx.clearRect(0,0,w,h);
+  ctx.fillStyle="#FFF1E0"; ctx.fillRect(0,0,w,h);
+  if(pwmRing.length<2){
+    ctx.fillStyle="#8a7791"; ctx.font="10px DM Mono, monospace";
+    ctx.fillText("PWM (rolling 3 min) — collecting…", pad+2, 12);
+    return;
+  }
+  const n=CHART_SLOTS;
+  const start=n-pwmRing.length;
+  ctx.strokeStyle="#34203F"; ctx.lineWidth=2; ctx.beginPath();
+  pwmRing.forEach((pwm,i)=>{
+    const x=(start+i)/(n-1)*(w-pad*2)+pad;
+    const y=h-pad-(pwm/255)*(h-pad*2);
+    i?ctx.lineTo(x,y):ctx.moveTo(x,y);
+  });
+  ctx.stroke();
+  ctx.fillStyle="#8a7791"; ctx.font="10px DM Mono, monospace";
+  ctx.fillText("PWM (rolling 3 min, newest →)", pad+2, 12);
+  ctx.textAlign="right";
+  ctx.fillText(String(pwmRing[pwmRing.length-1]), w-pad-2, 12);
+  ctx.textAlign="left";
+}
+async function act(url,label){
+  addLog("→ "+label+"…");
+  try{
+    const r=await fetch(url,{method:"POST"});
+    const d=await r.json().catch(()=>({ok:r.ok,msg:r.statusText}));
+    addLog((d.ok!==false?"✓ ":"✗ ")+(d.msg||label));
+    poll();
+  }catch(e){ addLog("✗ "+e); }
+}
+$("#btnCalm").onclick=()=>{
+  if(!confirm("Raise trip to 46°C so the fan stays OFF at idle (~44–45°C)? This stops cusp pulsing.")) return;
+  act("/api/fan/calm","fix cusp 46°C");
+};
+$("#btnRestore").onclick=()=>act("/api/fan/restore","restore factory 45°C");
+$("#btnAntiPulse").onclick=()=>{
+  if(!confirm("44°C keeps the fan ON at idle — louder than 46°C calm. Continue?")) return;
+  act("/api/fan/steady","steady-on 44°C");
+};
+$("#btnRefresh").onclick=()=>poll();
+poll();
+setInterval(poll, 2000);
+</script>
+<script src="/static/nav.js"></script>
+</body>
+</html>

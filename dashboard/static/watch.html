@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#28D9A0">
+<title>Peachy Room Watch</title>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=DM+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --cream:#FFF1E0; --ink:#34203F; --peach:#FF8A5B; --coral:#FF5C8A;
+    --mint:#28D9A0; --amber:#FFC247; --mono:"DM Mono",ui-monospace,monospace;
+    --disp:"Baloo 2",ui-rounded,system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:var(--disp);background:var(--cream);color:var(--ink);
+    min-height:100dvh;padding:16px 14px 40px}
+  h1{font-size:22px;font-weight:800;margin-bottom:4px}
+  .sub{font-family:var(--mono);font-size:10px;color:#8a7791;line-height:1.45;margin-bottom:14px}
+  .hero{
+    border:3px solid var(--ink);border-radius:18px;padding:28px 20px;text-align:center;
+    box-shadow:4px 4px 0 var(--ink);margin-bottom:12px;transition:background .35s,color .35s;
+  }
+  .hero.lit{background:linear-gradient(180deg,#FFF8D6 0%,#FFE566 100%);color:#3a2800}
+  .hero.dark{background:linear-gradient(180deg,#2a2030 0%,#1a1220 100%);color:#e8dff0}
+  .hero .big{font-size:clamp(36px,12vw,64px);font-weight:800;line-height:1;letter-spacing:-1px}
+  .hero .tag{font-family:var(--mono);font-size:11px;margin-top:8px;opacity:.85}
+  .hero .delta{font-family:var(--mono);font-size:18px;font-weight:700;margin-top:12px}
+  .panel{background:#fff;border:2px solid var(--ink);border-radius:14px;
+    box-shadow:3px 3px 0 var(--ink);padding:14px;margin-bottom:12px}
+  .panel.off{opacity:.7}
+  .big{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .stat{background:var(--cream);border:2px solid var(--ink);border-radius:10px;padding:10px}
+  .stat .lbl{font-family:var(--mono);font-size:9px;text-transform:uppercase;color:#8a7791}
+  .stat .val{font-size:22px;font-weight:800;line-height:1.1;margin-top:2px}
+  .stat .sub{font-family:var(--mono);font-size:10px;color:#8a7791;margin-top:2px}
+  .hint{font-family:var(--mono);font-size:10px;line-height:1.45;color:#8a7791;margin:8px 0}
+  .btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+  button{font-family:var(--disp);font-weight:700;font-size:13px;border:2px solid var(--ink);
+    border-radius:10px;padding:10px 14px;cursor:pointer;box-shadow:2px 2px 0 var(--ink);background:#fff}
+  button:active{transform:translate(1px,1px);box-shadow:1px 1px 0 var(--ink)}
+  button.primary{background:var(--mint)}
+  button.coral{background:var(--coral);color:#fff}
+  button.secondary{background:#fff}
+  button:disabled{opacity:.45;cursor:not-allowed}
+  .bar-wrap{margin:10px 0 4px}
+  .bar{height:14px;border:2px solid var(--ink);border-radius:8px;background:#eee;overflow:hidden;position:relative}
+  .bar .ref{position:absolute;top:0;bottom:0;width:2px;background:var(--coral);z-index:2}
+  .bar .on{position:absolute;top:0;bottom:0;width:2px;background:var(--mint);z-index:2}
+  .bar .fill{height:100%;background:var(--amber);transition:width .4s}
+  #spark{display:flex;align-items:flex-end;gap:2px;height:48px;margin-top:8px}
+  #spark span{flex:1;background:var(--peach);border-radius:2px 2px 0 0;min-height:2px;transition:height .3s}
+  #log{font-family:var(--mono);font-size:9px;max-height:100px;overflow:auto;line-height:1.45;white-space:pre-wrap}
+  .badge{display:inline-block;font-family:var(--mono);font-size:9px;font-weight:700;
+    padding:3px 8px;border-radius:999px;border:2px solid var(--ink)}
+  .badge.run{background:var(--mint)}
+  .badge.stop{background:#fff}
+  .trans{font-family:var(--mono);font-size:10px;margin-top:6px}
+  a.link{color:var(--peach);font-family:var(--mono);font-size:10px}
+  canvas#chart{width:100%;height:160px;border:2px solid var(--ink);border-radius:8px;background:#fff;display:block}
+  .chart-legend{display:flex;flex-wrap:wrap;gap:10px;font-family:var(--mono);font-size:9px;margin-top:6px}
+  .chart-legend span::before{content:"";display:inline-block;width:10px;height:3px;margin-right:4px;vertical-align:middle}
+  .leg-ema::before{background:var(--amber)}
+  .leg-ref::before{background:var(--coral)}
+  .leg-on::before{background:var(--mint)}
+  .leg-lit::before{background:#FFE566;height:8px;width:8px;border:1px solid var(--ink)}
+</style>
+<link rel="stylesheet" href="/static/nav.css">
+</head>
+<body>
+<div id="peachyNav"></div>
+<h1>📡 Room watch</h1>
+<p class="sub">Live lights-on/off sense + Peachy state machine. Flip the room switch and watch Δ, latency, and debounce.</p>
+
+<div class="hero dark" id="hero">
+  <div class="big" id="heroTxt">LIGHTS OFF</div>
+  <div class="tag" id="heroSub">starting…</div>
+  <div class="delta" id="heroDelta">Δ —</div>
+</div>
+
+<div class="panel" id="confirmPanel">
+  <b>Confirmation</b>
+  <p class="hint">Lights match what Peachy reads? Tap to confirm — OFF re-anchors the dark baseline.</p>
+  <div class="btns">
+    <button class="secondary" id="btnConfirmOff">✓ Lights OFF</button>
+    <button class="secondary" id="btnConfirmOn" style="background:var(--amber)">✓ Lights ON</button>
+  </div>
+  <p class="hint" id="confirmHint">—</p>
+</div>
+
+<div class="panel" id="ctlPanel">
+  <span class="badge stop" id="badgeRun">stopped</span>
+  <span class="hint" style="display:inline;margin-left:8px" id="runHint">Start watching to drive auto wake/sleep</span>
+  <div class="btns">
+    <button class="primary" id="btnStart">Start room watch</button>
+    <button class="coral" id="btnStop" disabled>Stop</button>
+    <button class="secondary" id="btnPreview">Live preview</button>
+    <a class="link" href="/lights" style="align-self:center;margin-left:4px">Tune thresholds → Lights</a>
+  </div>
+</div>
+
+<div class="panel">
+  <b>Sensitivity</b>
+  <div class="bar-wrap">
+    <div class="bar" id="barTrack">
+      <div class="fill" id="barFill" style="width:40%"></div>
+      <div class="ref" id="barRef" style="left:40%"></div>
+      <div class="on" id="barOn" style="left:55%"></div>
+    </div>
+  </div>
+  <p class="hint" id="senseHint">EMA vs ref · green tick = ON threshold · red = ref</p>
+  <div class="big">
+    <div class="stat"><span class="lbl">ON delta</span><div class="val" id="vOn">—</div>
+      <div class="sub" id="vOnT">lit ≥ ref + ?</div></div>
+    <div class="stat"><span class="lbl">OFF delta</span><div class="val" id="vOff">—</div>
+      <div class="sub" id="vOffT">dark ≤ ref + ?</div></div>
+    <div class="stat"><span class="lbl">Peachy state</span><div class="val" id="vState">—</div>
+      <div class="sub" id="vPending">pending —</div></div>
+    <div class="stat"><span class="lbl">Commit delay</span><div class="val" id="vSettle">—</div>
+      <div class="sub" id="vPoll">poll —</div></div>
+  </div>
+</div>
+
+<div class="panel">
+  <b>Live chart</b> — scrolling EMA, ref, and ON threshold (1 sample/sec)
+  <canvas id="chart" width="800" height="160" aria-label="light level over time"></canvas>
+  <div class="chart-legend">
+    <span class="leg-ema">EMA</span>
+    <span class="leg-ref">ref (adaptive dark)</span>
+    <span class="leg-on">ON threshold</span>
+    <span class="leg-lit">LIT periods</span>
+  </div>
+  <div class="btns">
+    <button class="secondary" id="btnClear">Clear chart</button>
+    <button class="secondary" id="btnExport">Export CSV</button>
+    <label class="hint" style="margin:0;display:flex;align-items:center;gap:6px">
+      Poll <select id="pollSel" style="font-family:var(--mono);font-size:10px;padding:4px">
+        <option value="1000">1s</option>
+        <option value="2000">2s</option>
+        <option value="3000">3s</option>
+      </select>
+    </label>
+    <span class="hint" id="sampleCt" style="margin:0">0 samples</span>
+  </div>
+</div>
+
+<div class="panel">
+  <b>Latency</b>
+  <div class="big">
+    <div class="stat"><span class="lbl">Poll RTT</span><div class="val" id="vRtt">—</div>
+      <div class="sub">this page → Peachy cam</div></div>
+    <div class="stat"><span class="lbl">Last lit change</span><div class="val" id="vFlip">—</div>
+      <div class="sub" id="vFlipAgo">—</div></div>
+    <div class="stat"><span class="lbl">Δ spike</span><div class="val" id="vSpike">—</div>
+      <div class="sub">max since page open</div></div>
+    <div class="stat"><span class="lbl">Log age</span><div class="val" id="vLogAge">—</div>
+      <div class="sub">watcher heartbeat ~5s</div></div>
+  </div>
+  <div id="spark" aria-label="delta history" style="display:none"></div>
+  <p class="trans" id="transLog"></p>
+</div>
+
+<div class="panel">
+  <span class="lbl" style="font-family:var(--mono);font-size:9px;text-transform:uppercase;color:#8a7791">Watcher log</span>
+  <div id="log"></div>
+</div>
+
+<script src="/static/nav.js"></script>
+<script>
+const $=s=>document.querySelector(s);
+let POLL_MS=1000;
+let timer=null;
+let pollBusy=false;
+let pollFailures=0;
+let lastGoodAt=0;
+let lastLit=null;
+let lastFlipAt=null;
+let maxDelta=0;
+const transitions=[];
+let history=[];  // {t, ts, ema, ref, delta, lit, would_lit, on_threshold, off_threshold}
+
+function fmtAgo(ms){
+  if(ms==null) return "—";
+  const s=Math.round(ms/1000);
+  if(s<2) return "just now";
+  if(s<60) return s+"s ago";
+  return Math.floor(s/60)+"m "+(s%60)+"s ago";
+}
+
+function addTrans(lit,delta){
+  const t=new Date().toLocaleTimeString();
+  transitions.unshift((lit?"💡 ON":"🌙 OFF")+" Δ="+(delta!=null?delta.toFixed(1):"?")+" @ "+t);
+  while(transitions.length>8) transitions.pop();
+  $("#transLog").textContent=transitions.join(" · ");
+}
+
+function mergeHistory(serverHist){
+  if(!serverHist||!serverHist.length) return;
+  const seen=new Set(history.map(h=>h.t));
+  for(const p of serverHist){
+    if(!seen.has(p.t)) history.push(p);
+  }
+  history.sort((a,b)=>a.t-b.t);
+  while(history.length>360) history.shift();
+}
+
+function drawChart(){
+  const c=$("#chart"), ctx=c.getContext("2d");
+  const w=c.width, h=c.height, padL=36, padR=8, padT=8, padB=22;
+  ctx.clearRect(0,0,w,h);
+  ctx.fillStyle="#FFF1E0"; ctx.fillRect(0,0,w,h);
+  if(history.length<2){
+    ctx.fillStyle="#8a7791"; ctx.font="11px DM Mono,monospace";
+    ctx.fillText("Collecting samples… flip lights ON/OFF", padL, h/2);
+    return;
+  }
+  const vals=history.flatMap(p=>[p.ema,p.ref,p.on_threshold]).filter(v=>v!=null);
+  const yMin=Math.max(0,Math.min(...vals)-15);
+  const yMax=Math.max(...vals)+15;
+  const x0=padL, x1=w-padR, y0=padT, y1=h-padB;
+  const X=i=>x0+(i/(history.length-1))*(x1-x0);
+  const Y=v=>y1-((v-yMin)/(yMax-yMin||1))*(y1-y0);
+
+  // LIT background bands
+  for(let i=0;i<history.length;i++){
+    if(history[i].lit||history[i].would_lit){
+      const x=X(i);
+      const xn=i<history.length-1?X(i+1):x+3;
+      ctx.fillStyle=history[i].lit?"rgba(255,229,102,.35)":"rgba(255,229,102,.15)";
+      ctx.fillRect(x,y0,xn-x,y1-y0);
+    }
+  }
+
+  // grid
+  ctx.strokeStyle="#ddd"; ctx.lineWidth=1;
+  for(let g=0;g<4;g++){
+    const v=yMin+(yMax-yMin)*g/3;
+    const y=Y(v);
+    ctx.beginPath(); ctx.moveTo(x0,y); ctx.lineTo(x1,y); ctx.stroke();
+    ctx.fillStyle="#8a7791"; ctx.font="9px DM Mono,monospace";
+    ctx.fillText(Math.round(v), 2, y+3);
+  }
+
+  function line(key,color,width,dash){
+    ctx.strokeStyle=color; ctx.lineWidth=width||2;
+    ctx.setLineDash(dash||[]);
+    ctx.beginPath();
+    history.forEach((p,i)=>{
+      const v=p[key]; if(v==null) return;
+      const x=X(i), y=Y(v);
+      if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    });
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  line("ref","#FF5C8A",1.5,[4,3]);
+  line("on_threshold","#28D9A0",1.5,[2,2]);
+  line("ema","#FFC247",2.5);
+
+  // time labels
+  ctx.fillStyle="#8a7791"; ctx.font="9px DM Mono,monospace";
+  ctx.fillText(history[0].ts||"", x0, h-4);
+  ctx.fillText(history[history.length-1].ts||"", x1-36, h-4);
+}
+
+function exportCsv(){
+  if(!history.length) return;
+  const cols=["ts","ema","ref","delta","lit","would_lit","on_threshold","off_threshold","raw"];
+  const rows=[cols.join(",")];
+  for(const p of history){
+    rows.push(cols.map(k=>p[k]).join(","));
+  }
+  const blob=new Blob([rows.join("\n")],{type:"text/csv"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download="peachy-light-"+new Date().toISOString().slice(0,19).replace(/:/g,"")+".csv";
+  a.click();
+}
+
+function setHero(lit,wouldLit,delta){
+  const h=$("#hero");
+  const showLit=lit||wouldLit;
+  h.className="hero "+(showLit?"lit":"dark");
+  $("#heroTxt").textContent=lit?"LIGHTS ON":(wouldLit?"WOULD TRIGGER":"LIGHTS OFF");
+  let sub=lit?"room reads lit (hysteresis ON)"
+    :wouldLit?"Δ above ON threshold — waiting for hysteresis"
+    :"room reads dark — switch off or below threshold";
+  if(lit&&wouldLit) sub="room reads lit";
+  else if(!lit&&wouldLit) sub="spike detected — should flip to LIT on next samples";
+  $("#heroSub").textContent=sub;
+  $("#heroDelta").textContent="Δ "+(delta!=null?((delta>=0?"+":"")+delta.toFixed(1)):"—");
+}
+
+function renderBar(ema,ref,onD){
+  if(ema==null||ref==null) return;
+  const max=Math.max(180,ema,ref+onD+10);
+  const pct=v=>Math.max(0,Math.min(100,v/max*100));
+  $("#barFill").style.width=pct(ema)+"%";
+  $("#barRef").style.left=pct(ref)+"%";
+  $("#barOn").style.left=pct(ref+onD)+"%";
+}
+
+async function api(path,opts={}){
+  const k=new URLSearchParams(location.search).get("k");
+  let url=path;
+  if(k) url+=(path.includes("?")?"&":"?")+"k="+encodeURIComponent(k);
+  const r=await fetch(url,opts);
+  if(!r.ok){
+    const t=await r.text();
+    throw new Error(r.status===401?"Open dashboard with ?k= token":(t.slice(0,80)||("HTTP "+r.status)));
+  }
+  return r.json();
+}
+
+function renderLog(lines){
+  const el=$("#log");
+  el.innerHTML="";
+  for(const ln of (lines||[]).slice(-8)){
+    const d=document.createElement("div");
+    d.textContent=ln;
+    el.appendChild(d);
+  }
+}
+
+function render(d){
+  if(!d.ok){return;}
+  mergeHistory(d.history);
+  const lit=!!d.lit;
+  const wouldLit=!!d.would_lit;
+  const delta=d.delta!=null?d.delta:(d.light&&d.light.delta);
+  const ema=d.ema??d.light?.ema;
+  const ref=d.ref??d.light?.ref;
+  const sens=d.sensitivity||{};
+
+  setHero(lit,wouldLit,delta);
+  if(d.light_source==="roomwatch"||d.light_source==="roomwatch_stale"){
+    let sub=$("#heroSub").textContent+" · synced with room watch";
+    if(d.light_source==="roomwatch_stale") sub+=" (log stale)";
+    $("#heroSub").textContent=sub;
+  }
+  renderBar(ema,ref,sens.on_delta||25);
+  if(delta!=null) maxDelta=Math.max(maxDelta,delta);
+  drawChart();
+  $("#sampleCt").textContent=history.length+" samples";
+
+  $("#vOn").textContent=sens.on_delta??"—";
+  $("#vOff").textContent=sens.off_delta??"—";
+  $("#vOnT").textContent="lit ≥ "+(d.on_threshold??sens.on_threshold??"?");
+  $("#vOffT").textContent="dark ≤ "+(d.off_threshold??sens.off_threshold??"?");
+  $("#vState").textContent=d.watcher_state||"—";
+  let pend="—";
+  if(d.pending) pend=d.pending+" "+d.pending_s.toFixed(0)+"s / "+(sens.settle_s||3)+"s settle";
+  $("#vPending").textContent=pend;
+  $("#vSettle").textContent="~"+((sens.settle_s||3)+"s");
+  $("#vPoll").textContent="every "+(POLL_MS/1000)+"s";
+
+  $("#vRtt").textContent=(d.poll_ms!=null?d.poll_ms+"ms":"—");
+  const flipLit=lit||wouldLit;
+  if(lastLit!==null&&flipLit!==lastLit){
+    lastFlipAt=Date.now();
+    addTrans(flipLit,delta);
+  }
+  lastLit=flipLit;
+  $("#vFlip").textContent=lastFlipAt?new Date(lastFlipAt).toLocaleTimeString():"—";
+  $("#vFlipAgo").textContent=fmtAgo(lastFlipAt?Date.now()-lastFlipAt:null);
+  $("#vSpike").textContent="+"+maxDelta.toFixed(1);
+
+  const run=!!d.running;
+  const healthy=d.healthy!==false;
+  $("#badgeRun").className="badge "+(run?(healthy?"run":"stop"):"stop");
+  $("#badgeRun").textContent=run?(healthy?"watching":"stalled"):"stopped";
+  $("#btnStart").disabled=run&&healthy;
+  $("#btnStop").disabled=!run;
+  $("#runHint").textContent=run
+    ?(healthy
+      ?("Peachy state "+(d.watcher_state||"?")+(d.conversation?" · convo on":""))
+      :"Watcher pid alive but log stale — tap Start to restart")
+    :"Start watching to drive auto wake/sleep";
+
+  if(d.watcher_t){
+    const parts=d.watcher_t.split(":");
+    const now=new Date();
+    const wt=new Date(now);
+    wt.setHours(+parts[0],+parts[1],+parts[2],0);
+    const age=Math.max(0,(now-wt)/1000);
+    $("#vLogAge").textContent=age<60?age.toFixed(0)+"s":"stale?";
+  }else if(run){
+    $("#vLogAge").textContent="waiting…";
+  }else{
+    $("#vLogAge").textContent="—";
+  }
+
+  renderLog(d.log_tail);
+}
+
+async function poll(){
+  if(pollBusy) return;
+  pollBusy=true;
+  const t0=performance.now();
+  const ctrl=new AbortController();
+  const abortId=setTimeout(()=>ctrl.abort(),12000);
+  try{
+    const d=await api("/api/roomwatch/status",{signal:ctrl.signal});
+    clearTimeout(abortId);
+    pollFailures=0;
+    lastGoodAt=Date.now();
+    d._client_ms=Math.round(performance.now()-t0);
+    render(d);
+  }catch(e){
+    clearTimeout(abortId);
+    pollFailures++;
+    const net=/fetch|network|abort/i.test(String(e));
+    const msg=e.name==="AbortError"?"status timed out — retrying…"
+      :net?"dashboard unreachable — retrying…"
+      :String(e);
+    if(lastGoodAt && Date.now()-lastGoodAt<45000){
+      const hint=$("#runHint");
+      if(!hint.textContent.includes("retrying")) hint.textContent=msg;
+    }else{
+      $("#heroSub").textContent=msg;
+    }
+  }finally{
+    pollBusy=false;
+  }
+}
+
+function pollDelay(){
+  if(pollFailures<=0) return POLL_MS;
+  return Math.min(8000, POLL_MS*Math.pow(2, pollFailures-1));
+}
+
+function schedulePoll(){
+  timer=setTimeout(async()=>{
+    await poll();
+    if(!document.hidden) schedulePoll();
+  }, pollDelay());
+}
+
+$("#btnStart").onclick=async()=>{
+  try{
+    const d=await api("/api/roomwatch/start",{method:"POST"});
+    poll();
+  }catch(e){
+    $("#runHint").textContent=String(e);
+  }
+};
+$("#btnStop").onclick=async()=>{
+  try{
+    await api("/api/roomwatch/stop",{method:"POST"});
+    poll();
+  }catch(e){
+    $("#runHint").textContent=String(e);
+  }
+};
+$("#btnPreview").onclick=async()=>{
+  await api("/api/preview/start",{method:"POST"});
+  poll();
+};
+$("#btnClear").onclick=async()=>{
+  await api("/api/roomwatch/history/clear",{method:"POST"});
+  history=[]; maxDelta=0; lastLit=null; transitions.length=0;
+  drawChart(); poll();
+};
+$("#btnExport").onclick=exportCsv;
+async function confirmLights(state){
+  try{
+    const d=await api("/api/roomwatch/confirm",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({lights:state}),
+    });
+    const ok=d.agree?"✓":"⚠";
+    $("#confirmHint").textContent=ok+" "+(d.msg||"saved");
+    poll();
+  }catch(e){
+    $("#confirmHint").textContent="confirm failed — "+e;
+  }
+}
+$("#btnConfirmOff").onclick=()=>confirmLights("off");
+$("#btnConfirmOn").onclick=()=>confirmLights("on");
+$("#pollSel").onchange=e=>{
+  POLL_MS=+e.target.value;
+  pollFailures=0;
+  stopPoll(); startPoll();
+};
+
+function startPoll(){
+  if(timer) return;
+  poll();
+  schedulePoll();
+}
+function stopPoll(){
+  if(timer){clearTimeout(timer);timer=null;}
+}
+document.addEventListener("visibilitychange",()=>{
+  if(document.hidden) stopPoll(); else startPoll();
+});
+startPoll();
+</script>
+</body>
+</html>

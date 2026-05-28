@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#FF8A5B">
+<title>Peachy — Conversation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=DM+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/nav.css">
+<style>
+  :root{
+    --cream:#FFF1E0; --ink:#34203F; --peach:#FF8A5B; --mint:#28D9A0;
+    --grape:#9B6BFF; --amber:#FFC247; --shadow:#34203F;
+    --disp:"Baloo 2",ui-rounded,system-ui,sans-serif;
+    --mono:"DM Mono",ui-monospace,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:var(--disp); color:var(--ink); background:var(--cream);
+    background-image:radial-gradient(circle at 1px 1px,rgba(52,32,63,.06) 1px,transparent 0);
+    background-size:20px 20px; min-height:100dvh; padding:0 14px 40px;
+  }
+  .wrap{max-width:920px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+  .panel{
+    background:#fff;border:2px solid var(--ink);border-radius:14px;
+    box-shadow:3px 3px 0 var(--shadow);padding:14px 16px;
+  }
+  .lbl{font-family:var(--mono);font-size:9px;text-transform:uppercase;
+    letter-spacing:.08em;color:#9a8aa3;margin:0 0 8px}
+  .hint{font-family:var(--mono);font-size:10px;color:#9a8aa3;line-height:1.45;margin:0 0 10px}
+  .status{font-family:var(--mono);font-size:11px;padding:8px 12px;border-radius:10px;
+    background:var(--cream);border:2px dashed rgba(52,32,63,.15);margin-bottom:10px}
+  .status.live{border-color:var(--mint);background:#EBFFF8;font-weight:700}
+  .status.starting{border-color:var(--amber);background:#FFF8E6;font-weight:700}
+  .status.err{border-color:#e05252;background:#FFF0F0;font-weight:700}
+  @keyframes pulse-border{0%,100%{opacity:1}50%{opacity:.4}}
+  .status.starting{animation:pulse-border 1.4s ease-in-out infinite}
+  .row{display:flex;flex-wrap:wrap;gap:8px}
+  .btn{
+    font-family:var(--disp);font-weight:700;font-size:13px;border:2px solid var(--ink);
+    border-radius:10px;padding:10px 14px;cursor:pointer;background:#fff;
+    box-shadow:2px 2px 0 var(--shadow);
+  }
+  .btn:active{transform:translate(1px,1px);box-shadow:1px 1px 0 var(--shadow)}
+  .btn:disabled{opacity:.45;cursor:not-allowed}
+  .btn.primary{background:var(--grape);color:#fff;border-color:#3b1f6e}
+  .btn.stop{background:var(--amber)}
+  .btn.active{background:var(--mint);box-shadow:inset 2px 2px 0 rgba(52,32,63,.15)}
+  .chip{
+    font-family:var(--mono);font-size:10px;font-weight:700;border:2px solid var(--ink);
+    border-radius:999px;padding:7px 12px;background:#fff;cursor:pointer;
+    box-shadow:2px 2px 0 var(--shadow);text-align:left;max-width:100%;
+  }
+  .chip.active{background:var(--peach);color:#fff}
+  .chip:disabled{opacity:.45;cursor:not-allowed}
+  .chip .sub{display:block;font-weight:500;color:#8a7791;margin-top:2px;font-size:9px}
+  .chip.active .sub{color:rgba(255,255,255,.85)}
+  .voice-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px}
+  .voice{
+    border:2px solid var(--ink);border-radius:12px;padding:10px;background:#fff;
+    box-shadow:2px 2px 0 var(--shadow);cursor:pointer;text-align:left;
+  }
+  .voice.active{background:linear-gradient(180deg,#F0FFF8,#fff);border-color:var(--mint)}
+  .voice:disabled{opacity:.45;cursor:not-allowed}
+  .voice .name{font-size:14px;font-weight:800}
+  .voice .hint{font-size:9px;margin:4px 0 0;line-height:1.35}
+  .tune-row{display:grid;grid-template-columns:42px 1fr 44px;gap:8px;align-items:center;margin:8px 0}
+  .tune-row label{font-family:var(--mono);font-size:10px}
+  .tune-row .val{font-family:var(--mono);font-size:10px;text-align:right}
+  input[type=range]{width:100%;accent-color:var(--peach)}
+  .panes{display:grid;grid-template-columns:1fr 1fr;gap:10px;min-height:280px}
+  @media(max-width:720px){.panes{grid-template-columns:1fr}}
+  .pane{border:2px solid var(--ink);border-radius:12px;display:flex;flex-direction:column;min-height:240px;overflow:hidden}
+  .pane-head{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:2px solid var(--ink);background:#fff}
+  .pane-you .pane-head{background:linear-gradient(180deg,#fff,#F5F0FF)}
+  .pane-peachy .pane-head{background:linear-gradient(180deg,#fff,#EBFFF8)}
+  .avatar{width:36px;height:36px;border:2px solid var(--ink);border-radius:50%;
+    display:flex;align-items:center;justify-content:center;background:#fff;flex-shrink:0}
+  .avatar svg{width:20px;height:20px;fill:var(--ink)}
+  .avatar img{width:26px;height:26px;object-fit:contain}
+  .pane-title{font-size:15px;font-weight:800;line-height:1.1}
+  .pane-sub{font-family:var(--mono);font-size:8px;color:#8a7791;text-transform:uppercase}
+  .msgs{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px;background:var(--cream)}
+  .bubble{max-width:94%;padding:8px 12px;border:2px solid var(--ink);border-radius:12px 12px 12px 4px;
+    background:#fff;box-shadow:2px 2px 0 var(--shadow);font-size:14px;line-height:1.4}
+  .pane-you .bubble{align-self:flex-end;border-radius:12px 12px 4px 12px;border-color:var(--grape)}
+  .bubble .t{display:block;font-family:var(--mono);font-size:8px;color:#9a8aa3;margin-bottom:3px}
+  .empty{margin:auto;text-align:center;font-family:var(--mono);font-size:10px;color:#9a8aa3;padding:16px;line-height:1.5}
+  details.adv{margin-top:8px;font-family:var(--mono);font-size:10px;color:#9a8aa3}
+  details.adv summary{cursor:pointer;font-weight:700;color:var(--ink)}
+  .log-row{display:flex;gap:6px;padding:2px 0;border-bottom:1px dashed rgba(52,32,63,.1)}
+  .log-row:last-child{border-bottom:none}
+  .log-ts{color:#9a8aa3;flex-shrink:0;min-width:58px}
+  .log-row.err .log-msg{color:#a3262d}
+  .log-row.warn .log-msg{color:#8a5c00}
+  .log-msg{word-break:break-word}
+  #toast{position:fixed;left:50%;bottom:20px;transform:translate(-50%,140%);
+    max-width:420px;width:calc(100% - 32px);background:var(--ink);color:#fff;
+    font-family:var(--mono);font-size:12px;border:2px solid #fff;border-radius:12px;
+    padding:10px 14px;transition:transform .3s;z-index:50}
+  #toast.show{transform:translate(-50%,0)}
+  #toast.ok{background:#1f7a5c} #toast.err{background:#a3262d}
+</style>
+</head>
+<body>
+<div id="peachyNav"></div>
+<div class="wrap">
+  <section class="panel">
+    <p class="lbl">Session</p>
+    <p class="status" id="sessionStatus">Checking…</p>
+    <div class="row">
+      <button class="btn primary" id="btnStart">💬 Start talking</button>
+      <button class="btn stop" id="btnStop" disabled>⏹ Stop</button>
+    </div>
+    <div class="tune-row" style="margin-top:12px">
+      <label for="volSlider">Vol</label>
+      <input type="range" id="volSlider" min="0" max="100" step="1" value="100" aria-label="Speaker volume">
+      <span class="val" id="volVal">100%</span>
+    </div>
+    <div class="row" style="margin-top:4px">
+      <button type="button" class="btn" id="btnVolTest" style="font-size:11px;padding:6px 10px">🔊 Test</button>
+      <button type="button" class="btn" data-sound="wake" style="font-size:11px;padding:6px 10px">🌅 Wake</button>
+      <button type="button" class="btn" data-sound="sleep" style="font-size:11px;padding:6px 10px">🌙 Sleep</button>
+      <button type="button" class="btn" data-sound="boop" style="font-size:11px;padding:6px 10px">🔔 Boop</button>
+    </div>
+    <p class="hint" style="margin:6px 0 0">Speaker volume — maxes to 100% when you start talking.</p>
+    <details class="adv">
+      <summary>Advanced: browser mic (Gradio)</summary>
+      <p style="margin-top:6px;line-height:1.45">
+        Only if you need laptop microphone instead of the robot mic.
+        <a id="gradioLink" href="#" target="_blank" rel="noopener" style="color:var(--grape)">Open Gradio ↗</a>
+        — stop conversation first, then run
+        <code>app-conversation.sh start --gradio</code> from terminal.
+      </p>
+    </details>
+  </section>
+
+  <section class="panel">
+    <p class="lbl">Mode — personality</p>
+    <p class="hint">Tap a mode for instant demo switches. Start conversation first.</p>
+    <div class="row" id="modeGrid"></div>
+    <p id="modeStatus" class="hint" style="margin:8px 0 0"></p>
+  </section>
+
+  <section class="panel">
+    <p class="lbl">Voice</p>
+    <p class="hint">Realtime voice — try a few for your audience.</p>
+    <div class="voice-grid" id="voiceGrid"></div>
+    <p id="voiceStatus" class="hint" style="margin:8px 0 0"></p>
+  </section>
+
+  <section class="panel">
+    <p class="lbl">Idle fidget</p>
+    <p class="hint">Occasional small moves while listening — not constant sway.</p>
+    <div class="tune-row">
+      <label for="idleScale">Size</label>
+      <input type="range" id="idleScale" min="0" max="150" step="5" value="55">
+      <span class="val" id="idleScaleVal">55%</span>
+    </div>
+    <div class="tune-row">
+      <label for="idleCalm">Calm</label>
+      <input type="range" id="idleCalm" min="0" max="100" step="5" value="75">
+      <span class="val" id="idleCalmVal">~22s</span>
+    </div>
+    <p id="idleStatus" class="hint" style="margin:0"></p>
+  </section>
+
+  <section class="panel">
+    <p class="lbl">Live transcript</p>
+    <div class="panes">
+      <div class="pane pane-you">
+        <header class="pane-head">
+          <div class="avatar" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+          </div>
+          <div><div class="pane-title">You</div><div class="pane-sub">what Peachy hears</div></div>
+        </header>
+        <div class="msgs" id="youMsgs"><p class="empty">Your words appear here.</p></div>
+      </div>
+      <div class="pane pane-peachy">
+        <header class="pane-head">
+          <div class="avatar"><img id="peachyIcon" src="/static/peachy-icon.png" alt=""></div>
+          <div><div class="pane-title">Peachy</div><div class="pane-sub">what Peachy says</div></div>
+        </header>
+        <div class="msgs" id="peachyMsgs"><p class="empty">Peachy’s replies appear here.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+      <p class="lbl" style="margin:0">Conversation app log</p>
+      <div style="display:flex;gap:6px;align-items:center">
+        <span id="logSrc" style="font-family:var(--mono);font-size:9px;color:#9a8aa3"></span>
+        <button type="button" class="btn" id="btnCopyLog"
+          style="font-size:10px;padding:4px 10px;box-shadow:1px 1px 0 var(--shadow)">Copy</button>
+      </div>
+    </div>
+    <div id="convoFullLog"
+      style="background:var(--cream);border:2px solid rgba(52,32,63,.15);border-radius:10px;
+             padding:8px 10px;font-family:var(--mono);font-size:10px;line-height:1.55;
+             max-height:340px;overflow-y:auto;color:var(--ink)">
+      <span style="color:#9a8aa3">No log yet — start a conversation.</span>
+    </div>
+  </section>
+</div>
+<div id="toast"></div>
+<script src="/static/nav.js"></script>
+<script>
+const $=s=>document.querySelector(s);
+let busy=false, running=false, _lastTx=0, _volBusy=false;
+const IDLE_CADENCE_MIN=6, IDLE_CADENCE_MAX=90, IDLE_BURST=2.2;
+
+function setVolUi(v){
+  const sl=$("#volSlider"), val=$("#volVal");
+  if(sl) sl.value=String(v);
+  if(val) val.textContent=v+"%";
+}
+async function loadVolume(){
+  try{
+    const d=await (await fetch("/api/volume")).json();
+    if(d.ok!==false && d.volume!=null) setVolUi(d.volume);
+    else setVolUi(100);
+  }catch(e){ setVolUi(100); }
+}
+async function applyVolume(vol, quiet){
+  if(_volBusy) return;
+  _volBusy=true;
+  setVolUi(vol);
+  try{
+    const r=await fetch("/api/volume",{method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({volume:vol})});
+    const d=await r.json().catch(()=>({ok:r.ok}));
+    if(!quiet && d.ok===false) toast(false, d.msg||"volume failed");
+    if(d.ok!==false && d.volume!=null) setVolUi(d.volume);
+  }catch(e){
+    if(!quiet) toast(false, String(e));
+  }finally{ _volBusy=false; }
+}
+async function testVolume(){
+  try{
+    const r=await fetch("/api/volume/test",{method:"POST"});
+    const d=await r.json().catch(()=>({ok:r.ok}));
+    toast(d.ok!==false, d.message||d.msg||"played");
+  }catch(e){ toast(false, String(e)); }
+}
+
+function toast(ok,msg){
+  const t=$("#toast"); t.textContent=msg; t.className="show "+(ok?"ok":"err");
+  clearTimeout(t._t); t._t=setTimeout(()=>t.className="",2800);
+}
+function esc(s){return String(s).replace(/[<>&"]/g,c=>({"<":"&lt;",">":"&gt;","&":"&amp;",'"':"&quot;"}[c]));}
+
+async function act(path,label){
+  if(busy) return;
+  busy=true;
+  try{
+    const r=await fetch(path,{method:"POST"});
+    const d=await r.json().catch(()=>({ok:r.ok}));
+    toast(d.ok!==false, (d.msg||label).split("\n").pop());
+    await refresh();
+    if(path.includes("start")) await loadVolume();
+  }catch(e){ toast(false,String(e)); }
+  finally{ busy=false; }
+}
+
+function renderPane(el, items, empty){
+  if(!items.length){ el.innerHTML=`<p class="empty">${empty}</p>`; return; }
+  const atBottom=el.scrollHeight-el.scrollTop<=el.clientHeight+20;
+  el.innerHTML=items.map(m=>`<div class="bubble"><span class="t">${esc(m.t||"")}</span>${esc(m.content)}</div>`).join("");
+  if(atBottom) el.scrollTop=el.scrollHeight;
+}
+
+async function loadModes(current){
+  const d=await (await fetch("/api/converse/personalities")).json();
+  const grid=$("#modeGrid");
+  const cards=d.cards||[];
+  grid.innerHTML=cards.map(c=>{
+    const active=current && c.id===current;
+    return `<button type="button" class="chip${active?" active":""}" data-mode="${esc(c.id)}" ${running?"":"disabled"}>
+      ${esc(c.label)}<span class="sub">${esc(c.hint)}</span></button>`;
+  }).join("");
+}
+
+async function loadVoices(current){
+  const d=await (await fetch("/api/converse/voices")).json();
+  const cards=d.cards||[];
+  const grid=$("#voiceGrid");
+  grid.innerHTML=cards.map(c=>{
+    const active=current && c.id.toLowerCase()===(current||"").toLowerCase();
+    return `<button type="button" class="voice${active?" active":""}" data-voice="${esc(c.id)}" ${running?"":"disabled"}>
+      <div class="name">${esc(c.label)}</div><div class="hint">${esc(c.hint)}</div></button>`;
+  }).join("");
+}
+
+async function applyMode(name){
+  if(!running) return;
+  $("#modeStatus").textContent="Switching mode…";
+  try{
+    const d=await (await fetch("/api/converse/personalities/apply?"+new URLSearchParams({name}),{method:"POST"})).json();
+    $("#modeStatus").textContent=d.ok?("✓ "+(d.status||name).split("\n")[0]):("✗ "+(d.error||"failed"));
+    const pc=await (await fetch("/api/converse/personalities")).json();
+    await loadModes(pc.current||name);
+  }catch(e){ $("#modeStatus").textContent="✗ "+e; }
+}
+
+async function applyVoice(voice){
+  if(!running) return;
+  $("#voiceStatus").textContent="Switching voice…";
+  try{
+    const d=await (await fetch("/api/converse/voices/apply?"+new URLSearchParams({voice}),{method:"POST"})).json();
+    $("#voiceStatus").textContent=d.ok?("✓ "+(d.status||voice)):("✗ "+(d.error||"failed"));
+    await loadVoices(voice);
+  }catch(e){ $("#voiceStatus").textContent="✗ "+e; }
+}
+
+function calmToCadence(c){ return IDLE_CADENCE_MIN+(100-c)/100*(IDLE_CADENCE_MAX-IDLE_CADENCE_MIN); }
+function cadenceToCalm(cd){ return Math.round(100-(cd-IDLE_CADENCE_MIN)/(IDLE_CADENCE_MAX-IDLE_CADENCE_MIN)*100); }
+function idleLabel(cadence,scale){
+  const pct=Math.round(scale*100);
+  return pct<=5?"Nearly still":`Small fidget every ~${Math.round(cadence)}s (${pct}% size)`;
+}
+let _idleT=null;
+function scheduleIdle(){ clearTimeout(_idleT); _idleT=setTimeout(applyIdle,450); }
+function updateIdleLabels(){
+  const sc=$("#idleScale"), ca=$("#idleCalm");
+  $("#idleScaleVal").textContent=sc.value+"%";
+  $("#idleCalmVal").textContent="~"+Math.round(calmToCadence(ca.value))+"s";
+  $("#idleStatus").textContent=idleLabel(calmToCadence(ca.value), sc.value/100);
+}
+async function loadIdle(){
+  if(!running) return;
+  try{
+    const d=await (await fetch("/api/converse/idle-motion")).json();
+    if(!d.ok) return;
+    $("#idleScale").value=Math.round((d.scale||0.55)*100);
+    $("#idleCalm").value=cadenceToCalm(d.cadence_s||22);
+    updateIdleLabels();
+  }catch(e){}
+}
+async function applyIdle(){
+  if(!running) return;
+  const scale=$("#idleScale").value/100, cadence=calmToCadence($("#idleCalm").value);
+  try{
+    const q=new URLSearchParams({scale:String(scale),cadence_s:String(cadence),burst_s:String(IDLE_BURST)});
+    const d=await (await fetch("/api/converse/idle-motion?"+q,{method:"POST"})).json();
+    $("#idleStatus").textContent=d.ok?("✓ "+idleLabel(d.cadence_s||cadence,d.scale||scale)):(d.error||"failed");
+  }catch(e){ $("#idleStatus").textContent="apply failed"; }
+}
+
+let _convoStartedAt=0;
+async function refresh(){
+  const st=await (await fetch("/api/status")).json();
+  running=!!st.conversation;
+  if(st.convo_started_at) _convoStartedAt=st.convo_started_at;
+  if(!running) _convoStartedAt=0;
+  const cs=st.convo_status||(running?"ready":"idle");
+  const bar=$("#sessionStatus");
+  if(!st.daemon){
+    bar.className="status";
+    bar.textContent="Robot offline — connect first (./go)";
+  }else if(cs==="ready"){
+    bar.className="status live";
+    bar.textContent="✅ Ready to converse · "+(st.host||"robot");
+  }else if(cs==="error"){
+    bar.className="status err";
+    bar.textContent="❌ Error starting up — check log below";
+  }else if(cs==="starting"){
+    const secs=_convoStartedAt?Math.round(Date.now()/1000-_convoStartedAt):0;
+    bar.className="status starting";
+    bar.textContent=`⏳ Loading conversation… ${secs}s — waiting for app to be ready`;
+  }else{
+    bar.className="status";
+    bar.textContent="Conversation off — tap Start talking";
+  }
+  $("#btnStart").disabled=running||busy||!st.daemon;
+  $("#btnStop").disabled=!running||busy;
+  const gl=$("#gradioLink");
+  if(st.gradio_url) gl.href=st.gradio_url;
+  let curVoice=null, curMode=null;
+  if(running){
+    try{
+      const vc=await (await fetch("/api/converse/voices/current")).json();
+      if(vc.ok) curVoice=vc.voice;
+    }catch(e){}
+    try{
+      const pc=await (await fetch("/api/converse/personalities")).json();
+      if(pc.current) curMode=pc.current;
+      await loadModes(curMode);
+    }catch(e){}
+    await loadVoices(curVoice);
+    await loadIdle();
+    try{
+      const tx=await (await fetch("/api/converse/transcript?n=120")).json();
+      if(tx.messages && tx.messages.length!==_lastTx){
+        _lastTx=tx.messages.length;
+        renderPane($("#youMsgs"), tx.messages.filter(m=>m.role==="user"), "Waiting for you…");
+        renderPane($("#peachyMsgs"), tx.messages.filter(m=>m.role==="assistant"), "Waiting for Peachy…");
+      }
+    }catch(e){}
+  }else{
+    await loadModes(null);
+    await loadVoices(null);
+  }
+}
+
+$("#btnStart").onclick=()=>act("/api/converse/start","Started");
+$("#btnStop").onclick=()=>act("/api/converse/stop","Stopped");
+(function initVolume(){
+  const sl=$("#volSlider");
+  if(!sl) return;
+  sl.addEventListener("input",()=>setVolUi(+sl.value));
+  sl.addEventListener("change",()=>applyVolume(+sl.value, false));
+  $("#btnVolTest")?.addEventListener("click", testVolume);
+})();
+async function playSound(id){
+  try{
+    const r=await fetch("/api/sound/"+encodeURIComponent(id),{method:"POST"});
+    const d=await r.json().catch(()=>({ok:r.ok}));
+    toast(d.ok!==false, d.msg||id);
+  }catch(e){ toast(false,String(e)); }
+}
+document.addEventListener("click",e=>{
+  const snd=e.target.closest("[data-sound]");
+  if(snd){ playSound(snd.dataset.sound); return; }
+  const m=e.target.closest("[data-mode]");
+  if(m){ applyMode(m.dataset.mode); return; }
+  const v=e.target.closest("[data-voice]");
+  if(v){ applyVoice(v.dataset.voice); return; }
+});
+["idleScale","idleCalm"].forEach(id=>{
+  $("#"+id).addEventListener("input",()=>{ updateIdleLabels(); scheduleIdle(); });
+});
+const pi=$("#peachyIcon");
+if(pi) pi.addEventListener("error",()=>pi.style.display="none");
+// ── Full conversation app log ─────────────────────────────────────────────
+let _logRaw=[];
+function logRowHtml(r){
+  const cls=r.level==="err"?"err":r.level==="warn"?"warn":"";
+  const ts=r.t?`<span class="log-ts">${esc(r.t)}</span>`:`<span class="log-ts"></span>`;
+  const msg=`<span class="log-msg">${esc(r.msg)}</span>`;
+  return `<div class="log-row ${cls}">${ts}${msg}</div>`;
+}
+async function pollConvoLog(){
+  try{
+    const d=await (await fetch("/api/converse/log?n=200")).json();
+    if(!d||d.ok===false) return;
+    const lines=d.lines||[];
+    if(lines.length===_logRaw.length && lines.length>0 &&
+       lines[lines.length-1].msg===_logRaw[_logRaw.length-1]?.msg) return; // no change
+    _logRaw=lines;
+    const el=$("#convoFullLog");
+    if(!el) return;
+    const atBottom=el.scrollHeight-el.scrollTop<=el.clientHeight+30;
+    if(!lines.length){
+      el.innerHTML=`<span style="color:#9a8aa3">No log yet — start a conversation.</span>`;
+    }else{
+      el.innerHTML=lines.map(logRowHtml).join("");
+    }
+    if(atBottom) el.scrollTop=el.scrollHeight;
+    const src=$("#logSrc");
+    if(src) src.textContent=d.source||"";
+  }catch(e){}
+}
+$("#btnCopyLog")?.addEventListener("click",()=>{
+  const txt=_logRaw.map(r=>(r.t?r.t+"  ":"")+r.msg).join("\n");
+  navigator.clipboard?.writeText(txt).then(()=>toast(true,"Log copied"))
+    .catch(()=>toast(false,"Copy failed"));
+});
+pollConvoLog();
+setInterval(pollConvoLog,2500);
+// ─────────────────────────────────────────────────────────────────────────
+
+loadVolume();
+refresh();
+setInterval(refresh,1500);
+// Tick the "Loading…" timer every second without waiting for full refresh
+setInterval(()=>{
+  if(!_convoStartedAt) return;
+  const bar=$("#sessionStatus");
+  if(!bar||!bar.className.includes("starting")) return;
+  const secs=Math.round(Date.now()/1000-_convoStartedAt);
+  bar.textContent=`⏳ Loading conversation… ${secs}s — waiting for app to be ready`;
+},1000);
+</script>
+</body>
+</html>

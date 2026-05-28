@@ -1,0 +1,8 @@
+# Peachy student project — pip install after creating the venv
+reachy-mini
+opencv-python-headless
+numpy
+fastapi
+uvicorn
+qrcode
+Pillow

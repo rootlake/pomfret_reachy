@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#FFC247">
+<title>Peachy Light Lab</title>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=DM+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --cream:#FFF1E0; --ink:#34203F; --peach:#FF8A5B; --coral:#FF5C8A;
+    --mint:#28D9A0; --amber:#FFC247; --mono:"DM Mono",ui-monospace,monospace;
+    --disp:"Baloo 2",ui-rounded,system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:var(--disp);background:var(--cream);color:var(--ink);
+    min-height:100dvh;padding:16px 14px 40px}
+  h1{font-size:22px;font-weight:800;margin-bottom:4px}
+  .sub{font-family:var(--mono);font-size:10px;color:#8a7791;line-height:1.45;margin-bottom:14px}
+  .panel{background:#fff;border:2px solid var(--ink);border-radius:14px;
+    box-shadow:3px 3px 0 var(--ink);padding:14px;margin-bottom:12px}
+  .panel.warn{background:#FFF8EB;border-color:var(--amber)}
+  .panel.ok{background:#EBFFF8;border-color:var(--mint)}
+  .panel.dark{background:#2a2030;color:#fff;border-color:#000}
+  .big{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .stat{background:var(--cream);border:2px solid var(--ink);border-radius:10px;padding:10px}
+  .stat .lbl{font-family:var(--mono);font-size:9px;text-transform:uppercase;color:#8a7791}
+  .stat .val{font-size:26px;font-weight:800;line-height:1.1;margin-top:2px}
+  .stat .sub{font-family:var(--mono);font-size:10px;color:#8a7791;margin-top:2px}
+  .lit-on{background:#EBFFF8;border-color:var(--mint)}
+  .lit-off{background:#FFF0F3;border-color:var(--coral)}
+  .hint{font-family:var(--mono);font-size:10px;line-height:1.45;color:#8a7791;margin:8px 0}
+  .btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+  button{font-family:var(--disp);font-weight:700;font-size:13px;border:2px solid var(--ink);
+    border-radius:10px;padding:10px 14px;cursor:pointer;box-shadow:2px 2px 0 var(--ink);
+    background:#fff}
+  button:active{transform:translate(1px,1px);box-shadow:1px 1px 0 var(--ink)}
+  button.primary{background:var(--amber)}
+  button.mint{background:var(--mint)}
+  button.coral{background:var(--coral);color:#fff}
+  button:disabled{opacity:.45;cursor:not-allowed}
+  .compare{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+  .compare img{width:100%;border:2px solid var(--ink);border-radius:8px;background:#111;min-height:80px}
+  .compare figcaption{font-family:var(--mono);font-size:9px;margin-top:4px;color:#8a7791}
+  table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:10px;margin-top:8px}
+  th,td{border:1px solid #ddd;padding:5px 6px;text-align:left}
+  th{background:var(--cream);font-size:9px;text-transform:uppercase}
+  tr.best td{background:#FFF8D6;font-weight:700}
+  tr.pass td{background:#EBFFF8}
+  tr.fail td{background:#FFF0F3}
+  label.row{display:flex;align-items:center;gap:10px;margin:8px 0;font-family:var(--mono);font-size:11px}
+  input[type=range]{flex:1}
+  select{font-family:var(--mono);font-size:11px;padding:6px;border:2px solid var(--ink);border-radius:8px}
+  #log{font-family:var(--mono);font-size:10px;max-height:120px;overflow:auto;line-height:1.5;white-space:pre-wrap}
+  .steps{counter-reset:step;margin:0;padding:0;list-style:none}
+  .steps li{counter-increment:step;font-family:var(--mono);font-size:10px;
+    padding:6px 0 6px 28px;position:relative;line-height:1.4}
+  .steps li::before{content:counter(step);position:absolute;left:0;top:6px;
+    width:20px;height:20px;border-radius:50%;background:var(--amber);border:2px solid var(--ink);
+    display:flex;align-items:center;justify-content:center;font-weight:700;font-size:10px}
+  @media(max-width:520px){.compare{grid-template-columns:1fr}}
+</style>
+<link rel="stylesheet" href="/static/nav.css">
+</head>
+<body>
+<div id="peachyNav"></div>
+<h1>💡 Light lab</h1>
+<p class="sub">Peachy head camera only — works while asleep (no-wake snap). Compare lights off vs on, tune thresholds, trigger wake/sleep.</p>
+
+<div class="panel" id="statusPanel">
+  <div class="big">
+    <div class="stat" id="stLit"><span class="lbl">Room</span><div class="val" id="vLit">—</div>
+      <div class="sub" id="vDelta">Δ —</div></div>
+    <div class="stat"><span class="lbl">EMA / ref</span><div class="val" id="vEma">—</div>
+      <div class="sub" id="vRef">ref —</div></div>
+    <div class="stat"><span class="lbl">Motion</span><div class="val" id="vMotion">—</div>
+      <div class="sub" id="vPreview">preview —</div></div>
+    <div class="stat"><span class="lbl">Best ROI Δ</span><div class="val" id="vBest">—</div>
+      <div class="sub" id="vSim">simulate —</div></div>
+  </div>
+  <p class="hint" id="statusHint">Loading…</p>
+  <div class="btns">
+    <button class="mint" id="btnPreview">Start live preview</button>
+    <button class="secondary" id="btnRefresh">Refresh</button>
+    <a class="link" href="/watch" style="align-self:center;font-family:var(--mono);font-size:10px;color:var(--peach)">Room watch → Watch tab</a>
+  </div>
+</div>
+
+<div class="panel">
+  <b>Compare test</b> — head can stay down; the <b>lower</b> wedge catches light through the body gap.
+  <ol class="steps" style="margin-top:10px">
+    <li>Turn room lights <b>OFF</b> → capture baseline</li>
+    <li>Turn lights <b>ON</b> → capture sample</li>
+    <li>Read the delta table — pick the ROI with the biggest jump</li>
+    <li>Save thresholds → room watch uses them automatically</li>
+  </ol>
+  <div class="btns">
+    <button class="coral" id="btnBaseline">1 · Baseline (lights OFF)</button>
+    <button class="primary" id="btnSample">2 · Sample (lights ON)</button>
+    <button class="mint" id="btnLive">Live snap (no wake)</button>
+  </div>
+  <div class="compare">
+    <figure><img id="imgBase" alt="baseline" src="" hidden><figcaption id="capBase">baseline — not captured</figcaption></figure>
+    <figure><img id="imgSample" alt="sample" src="" hidden><figcaption id="capSample">sample — not captured</figcaption></figure>
+  </div>
+</div>
+
+<div class="panel">
+  <b>ROI numbers</b> <span class="hint" style="display:inline">colored boxes on photos above</span>
+  <table>
+    <thead><tr><th>ROI</th><th>mean</th><th>std</th><th>spread</th><th>bright%</th><th>Δ mean</th><th>lit?</th></tr></thead>
+    <tbody id="roiBody"><tr><td colspan="7">Capture baseline + sample</td></tr></tbody>
+  </table>
+</div>
+
+<div class="panel">
+  <b>Threshold tuner</b>
+  <label class="row">ON delta (lit) <input type="range" id="slOn" min="5" max="60" step="1"><span id="lblOn">25</span></label>
+  <label class="row">OFF delta (dark) <input type="range" id="slOff" min="3" max="40" step="1"><span id="lblOff">12</span></label>
+  <label class="row">Preferred ROI
+    <select id="selRoi">
+      <option value="full">full frame</option>
+      <option value="lower">lower (body crack)</option>
+      <option value="center">center</option>
+      <option value="upper">upper</option>
+      <option value="left_edge">left edge</option>
+      <option value="right_edge">right edge</option>
+    </select>
+  </label>
+  <div class="btns">
+    <button class="primary" id="btnSaveTune">Save thresholds</button>
+    <button class="secondary" id="btnSuggest">Use suggested</button>
+  </div>
+  <p class="hint" id="tuneHint">Saved to <code>.run/light_tune.json</code> — watch-room reads it on each poll.</p>
+</div>
+
+<div class="panel">
+  <span class="lbl" style="font-family:var(--mono);font-size:9px;text-transform:uppercase;color:#8a7791">Log</span>
+  <div id="log"></div>
+</div>
+
+<script src="/static/nav.js"></script>
+<script>
+const $=s=>document.querySelector(s);
+const logEl=$("#log");
+let pollTimer=null;
+let bust=Date.now();
+
+function addLog(line){
+  const d=document.createElement("div");
+  d.textContent=new Date().toLocaleTimeString()+" "+line;
+  logEl.prepend(d);
+  while(logEl.childElementCount>20) logEl.lastChild.remove();
+}
+
+function imgUrl(name){
+  return "/api/light/lab/image/"+name+"?t="+(++bust);
+}
+
+function setLit(lit,delta){
+  const st=$("#stLit");
+  st.className="stat "+(lit?"lit-on":"lit-off");
+  $("#vLit").textContent=lit?"LIT":"DARK";
+  $("#vDelta").textContent="Δ "+(delta!=null?delta.toFixed(1):"—");
+}
+
+async function api(path,opts){
+  const r=await fetch(path,opts);
+  return r.json();
+}
+
+function renderRoiTable(d){
+  const cmp=d.compare;
+  const regions=d.regions||{};
+  const deltas=cmp&&cmp.ok?cmp.deltas:{};
+  const best=cmp&&cmp.best_roi;
+  const sim=d.simulate;
+  const on=d.tune&&d.tune.on_delta||25;
+  const body=$("#roiBody");
+  body.innerHTML="";
+  const names=Object.keys(d.roi_defs||regions);
+  if(!names.length){body.innerHTML='<tr><td colspan="7">No live read yet</td></tr>';return;}
+  for(const name of names){
+    const r=regions[name]||{};
+    const del=deltas[name];
+    const tr=document.createElement("tr");
+    if(name===best) tr.className="best";
+    else if(sim&&sim.roi===name) tr.className=sim.passes?"pass":"fail";
+    const dMean=del?del.mean_delta:"—";
+    let litCell="—";
+    if(del&&d.has_baseline){
+      const pass=del.mean_delta>=on;
+      litCell=pass?"✓ would wake":"✗ no";
+    }
+    tr.innerHTML=`<td>${name}</td><td>${r.mean??"—"}</td><td>${r.std??"—"}</td>`
+      +`<td>${r.spread??"—"}</td><td>${r.bright_pct??"—"}</td><td>${dMean}</td><td>${litCell}</td>`;
+    body.appendChild(tr);
+  }
+}
+
+function render(d){
+  if(!d.ok){addLog("ERR "+(d.msg||"failed"));return;}
+  const s=d.sensor||{};
+  setLit(!!s.lit,s.delta);
+  $("#vEma").textContent=s.ema!=null?s.ema:"—";
+  $("#vRef").textContent="ref "+(s.ref!=null?s.ref:"—")+" · on≥"+(s.on_delta??"?");
+  $("#vMotion").textContent=s.motion!=null?s.motion:"—";
+  $("#vPreview").textContent=d.preview?"preview on":"preview off";
+  const cmp=d.compare;
+  if(cmp&&cmp.ok){
+    $("#vBest").textContent="+"+cmp.best_mean_delta;
+    $("#vBest").parentElement.querySelector(".sub").textContent=cmp.best_roi+" ROI";
+  }else{
+    $("#vBest").textContent="—";
+  }
+  if(d.simulate){
+    const sim=d.simulate;
+    $("#vSim").textContent=sim.passes?"✓ would trigger":"✗ below threshold";
+  }
+  let hint="";
+  if(d.dark_frame) hint="Full frame very dark — try the lower (body crack) ROI.";
+  else if(!d.has_baseline) hint="Capture baseline with lights OFF while Peachy sleeps.";
+  else if(!d.has_sample) hint="Flip lights ON and capture sample.";
+  else if(d.simulate&&d.simulate.passes) hint="Compare test passes — save thresholds and try room watch.";
+  else if(d.simulate) hint="Increase ON delta or try a different ROI (lower often wins head-down).";
+  else hint="Peachy cam · no-wake snaps OK while asleep.";
+  $("#statusHint").textContent=hint;
+  if(d.baseline){
+    const ib=$("#imgBase");
+    ib.hidden=false;
+    ib.onerror=()=>{ib.hidden=true;};
+    ib.src=imgUrl("baseline_annot");
+    $("#capBase").textContent="baseline "+(d.baseline.ts||"");
+  }
+  if(d.sample){
+    const is=$("#imgSample");
+    is.hidden=false;
+    is.onerror=()=>{is.hidden=true;};
+    is.src=imgUrl("sample_annot");
+    $("#capSample").textContent="sample "+(d.sample.ts||"");
+  }
+  if(d.tune){
+    $("#slOn").value=d.tune.on_delta;
+    $("#slOff").value=d.tune.off_delta;
+    $("#lblOn").textContent=d.tune.on_delta;
+    $("#lblOff").textContent=d.tune.off_delta;
+    if(d.tune.preferred_roi) $("#selRoi").value=d.tune.preferred_roi;
+    if(cmp&&cmp.suggested_on_delta){
+      $("#tuneHint").textContent="Suggested ON≈"+cmp.suggested_on_delta+" from "+cmp.best_roi+" ROI";
+    }
+  }
+  renderRoiTable(d);
+}
+
+async function refresh(){
+  try{
+    const d=await api("/api/light/lab");
+    render(d);
+  }catch(e){addLog("poll failed "+e);}
+}
+
+async function capture(label){
+  addLog("capturing "+label+"…");
+  const d=await api("/api/light/lab/capture/"+label,{method:"POST"});
+  if(d.ok) addLog(label+" OK mean="+(d.regions&&d.regions.full&&d.regions.full.mean));
+  else addLog("FAIL "+(d.msg||""));
+  await refresh();
+}
+
+$("#btnBaseline").onclick=()=>capture("baseline");
+$("#btnSample").onclick=()=>capture("sample");
+$("#btnLive").onclick=()=>capture("live");
+$("#btnRefresh").onclick=refresh;
+
+$("#slOn").oninput=e=>{$("#lblOn").textContent=e.target.value;};
+$("#slOff").oninput=e=>{$("#lblOff").textContent=e.target.value;};
+
+$("#btnSaveTune").onclick=async()=>{
+  const body={on_delta:+$("#slOn").value,off_delta:+$("#slOff").value,preferred_roi:$("#selRoi").value};
+  const d=await api("/api/light/lab/tune",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+  addLog(d.ok?"saved tune":"save failed "+(d.msg||""));
+  refresh();
+};
+
+$("#btnSuggest").onclick=async()=>{
+  const d=await api("/api/light/lab");
+  if(d.compare&&d.compare.ok){
+    $("#slOn").value=d.compare.suggested_on_delta;
+    $("#slOff").value=d.compare.suggested_off_delta;
+    $("#lblOn").textContent=d.compare.suggested_on_delta;
+    $("#lblOff").textContent=d.compare.suggested_off_delta;
+    if(d.compare.best_roi) $("#selRoi").value=d.compare.best_roi;
+    addLog("applied suggested from "+d.compare.best_roi);
+  }
+};
+
+$("#btnPreview").onclick=async()=>{
+  const d=await api("/api/preview/start",{method:"POST"});
+  addLog(d.msg||"preview");
+  refresh();
+};
+
+function startPoll(){
+  if(pollTimer) return;
+  pollTimer=setInterval(refresh,2500);
+}
+function stopPoll(){
+  if(pollTimer){clearInterval(pollTimer);pollTimer=null;}
+}
+document.addEventListener("visibilitychange",()=>{
+  if(document.hidden) stopPoll(); else {refresh(); startPoll();}
+});
+refresh();
+startPoll();
+</script>
+</body>
+</html>

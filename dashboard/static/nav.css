@@ -1,0 +1,17 @@
+.peachy-nav{
+  position:sticky;top:0;z-index:40;display:flex;align-items:center;
+  justify-content:space-between;gap:12px;flex-wrap:wrap;
+  padding:10px 14px;margin:-2px -2px 14px;border-bottom:2px solid var(--ink);
+  background:rgba(255,255,255,.96);backdrop-filter:blur(6px);
+  box-shadow:0 3px 0 var(--shadow);
+}
+.peachy-nav .brand{font-weight:800;font-size:18px;letter-spacing:-.3px;color:var(--ink);
+  text-decoration:none}
+.peachy-nav .tabs{display:flex;gap:6px;flex-wrap:wrap}
+.peachy-nav .tabs a{
+  font-family:var(--mono);font-size:10px;font-weight:700;text-decoration:none;
+  border:2px solid var(--ink);border-radius:999px;padding:6px 12px;
+  background:#fff;color:var(--ink);
+}
+.peachy-nav .tabs a.active{background:var(--peach);color:#fff}
+.peachy-nav .tabs a:hover:not(.active){background:var(--cream)}
